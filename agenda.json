@@ -1,0 +1,49 @@
+{
+  "_instrucoes": "Edite os eventos da semana abaixo. Salve o arquivo e o site lê automaticamente. Bandeiras: 'br' = Brasil, 'us' = EUA, 'eu' = Europa, 'cn' = China.",
+  "semana_de": "04/05/2026 a 08/05/2026",
+  "ultima_atualizacao": "2026-05-04",
+  "dias": [
+    {
+      "dia": "TERÇA-FEIRA",
+      "data": "05/05",
+      "eventos": [
+        { "hora": "08:00", "pais": "br", "evento": "Ata do Copom" },
+        { "hora": "09:30", "pais": "br", "evento": "Balança Comercial" },
+        { "hora": "11:00", "pais": "us", "evento": "Relatório de Emprego JOLTS" }
+      ]
+    },
+    {
+      "dia": "QUARTA-FEIRA",
+      "data": "06/05",
+      "eventos": [
+        { "hora": "09:15", "pais": "us", "evento": "Relatório de Emprego — ADP" },
+        { "hora": "10:00", "pais": "br", "evento": "PMI de Serviços" }
+      ]
+    },
+    {
+      "dia": "QUINTA-FEIRA",
+      "data": "07/05",
+      "eventos": [
+        { "hora": "09:00", "pais": "br", "evento": "Produção Industrial" },
+        { "hora": "15:00", "pais": "us", "evento": "Balança Comercial" }
+      ]
+    },
+    {
+      "dia": "SEXTA-FEIRA",
+      "data": "08/05",
+      "eventos": [
+        { "hora": "09:30", "pais": "us", "evento": "Relatório de Emprego — Payroll" },
+        { "hora": "09:30", "pais": "us", "evento": "Taxa de Desemprego" },
+        { "hora": "10:00", "pais": "br", "evento": "Produção de Veículos (ANFAVEA)" }
+      ]
+    }
+  ],
+  "destaques_indices": [
+    { "tk": "IBOVESPA",         "valor": "187.318",   "var": "+1,39%",   "dir": "up" },
+    { "tk": "ÍNDICE CONSUMO",   "valor": "3.084",     "var": "+1,52%",   "dir": "up" },
+    { "tk": "IFNC",             "valor": "19.328",    "var": "+1,19%",   "dir": "up" },
+    { "tk": "ÍNDICE IMOB.",     "valor": "1.392",     "var": "+1,06%",   "dir": "up" },
+    { "tk": "IFIX",             "valor": "3.929",     "var": "+0,07%",   "dir": "up" },
+    { "tk": "ÍNDICE SSE",       "valor": "4.112",     "var": "—",        "dir": "flat" }
+  ]
+}

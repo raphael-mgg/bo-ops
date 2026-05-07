@@ -1,0 +1,2336 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BACKOFFICE.OPS — Um dia na mesa de operações</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ========================== SIDEBAR ========================== -->
+<aside class="sidebar">
+  <div class="sidebar__brand">
+    <div class="sidebar__logo">
+      <span class="logo-bracket">[</span>
+      <span class="logo-text">BO.OPS</span>
+      <span class="logo-bracket">]</span>
+    </div>
+    <div class="sidebar__tag">backoffice / liquidação / D+0</div>
+  </div>
+
+  <nav class="sidebar__nav">
+    <div class="nav-section">
+      <div class="nav-title">○ MERCADO</div>
+      <a href="#mercado" class="nav-link"><span class="nav-time">●</span>Manchetes & Portais</a>
+      <a href="#broker" class="nav-link"><span class="nav-time">⇄</span>Home Broker</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-title">○ TIMELINE DO DIA</div>
+      <a href="#abertura" class="nav-link"><span class="nav-time">07:30</span>Abertura</a>
+      <a href="#importacao" class="nav-link"><span class="nav-time">08:00</span>Importação corretoras</a>
+      <a href="#casamento" class="nav-link"><span class="nav-time">09:00</span>Casamento de boletas</a>
+      <a href="#caixa" class="nav-link"><span class="nav-time">10:00</span>Necessidade de caixa</a>
+      <a href="#liquidacao" class="nav-link"><span class="nav-time">11:00</span>Liquidação SPB/B3</a>
+      <a href="#conciliacao" class="nav-link"><span class="nav-time">14:00</span>Conciliação custódia</a>
+      <a href="#mtm" class="nav-link"><span class="nav-time">15:00</span>Marcação a mercado</a>
+      <a href="#bi" class="nav-link"><span class="nav-time">17:00</span>Power BI / Cota</a>
+      <a href="#fechamento" class="nav-link"><span class="nav-time">18:00</span>Fechamento</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-title">○ REFERÊNCIA</div>
+      <a href="#fluxos" class="nav-link"><span class="nav-time">REF</span>Fluxos B3/Selic/SPB</a>
+      <a href="#stack" class="nav-link"><span class="nav-time">STACK</span>Excel · VBA · Python · BI</a>
+      <a href="#download" class="nav-link"><span class="nav-time">DL</span>Download projeto</a>
+      <a href="#sobre" class="nav-link"><span class="nav-time">★</span>Sobre o autor</a>
+    </div>
+  </nav>
+
+  <div class="sidebar__footer">
+    <button id="theme-toggle" class="theme-btn" aria-label="Alternar tema">
+      <span class="theme-icon">◐</span>
+      <span class="theme-label">tema</span>
+    </button>
+    <div class="footer-meta">
+      v1.0 · 2026<br>
+      pregão simulado<br>
+      D0 = 28/04/2026
+    </div>
+  </div>
+</aside>
+
+<!-- ========================== MAIN ========================== -->
+<main class="main">
+
+<!-- ========== TOP TABS ========== -->
+<nav class="toptabs" role="tablist" aria-label="Navegação principal">
+  <button class="toptab" data-tab="mercado" role="tab" aria-selected="false">
+    <span class="toptab__icon">●</span>
+    <span class="toptab__name">Mercado</span>
+    <span class="toptab__sub">Notícias · cotações</span>
+  </button>
+  <button class="toptab toptab--active" data-tab="diario" role="tab" aria-selected="true">
+    <span class="toptab__icon">◐</span>
+    <span class="toptab__name">Diário de Operações</span>
+    <span class="toptab__sub">Backoffice · pipeline</span>
+  </button>
+  <button class="toptab" data-tab="broker" role="tab" aria-selected="false">
+    <span class="toptab__icon">▲</span>
+    <span class="toptab__name">Home Broker</span>
+    <span class="toptab__sub">Simulador · trading</span>
+  </button>
+</nav>
+
+<!-- ========== TAB: DIÁRIO DE OPERAÇÕES (CONTEÚDO ATUAL) ========== -->
+<div class="tab-panel tab-panel--active" id="tab-diario" role="tabpanel">
+
+<!-- ========== HERO ========== -->
+<section class="hero" id="hero">
+  <div class="hero__ticker" aria-hidden="true">
+    <div class="ticker-track">
+      <span class="t-up">PETR4 +1.24%</span><span>·</span>
+      <span class="t-dn">VALE3 -0.87%</span><span>·</span>
+      <span class="t-up">ITUB4 +0.42%</span><span>·</span>
+      <span class="t-up">BBDC4 +1.10%</span><span>·</span>
+      <span class="t-dn">ABEV3 -0.31%</span><span>·</span>
+      <span class="t-up">WEGE3 +2.05%</span><span>·</span>
+      <span class="t-up">BBAS3 +0.78%</span><span>·</span>
+      <span class="t-dn">B3SA3 -0.44%</span><span>·</span>
+      <span class="t-up">RENT3 +1.62%</span><span>·</span>
+      <span class="t-dn">MGLU3 -2.18%</span><span>·</span>
+      <span class="t-up">SUZB3 +0.95%</span><span>·</span>
+      <span class="t-up">ELET3 +1.33%</span><span>·</span>
+      <span class="t-up">PETR4 +1.24%</span><span>·</span>
+      <span class="t-dn">VALE3 -0.87%</span><span>·</span>
+      <span class="t-up">ITUB4 +0.42%</span><span>·</span>
+      <span class="t-up">BBDC4 +1.10%</span><span>·</span>
+    </div>
+  </div>
+
+  <div class="hero__content">
+    <div class="hero__eyebrow">
+      <span class="dot dot--live"></span>
+      DIÁRIO TÉCNICO · BACKOFFICE DE GESTORA
+    </div>
+    <h1 class="hero__title">
+      <span class="title-line">Um dia</span>
+      <span class="title-line title-line--accent">na mesa</span>
+      <span class="title-line">de liquidação.</span>
+    </h1>
+    <p class="hero__sub">
+      Da abertura ao fechamento da cota — cada tarefa do operador de backoffice
+      reproduzida com <em>Excel</em>, <em>VBA</em>, <em>Python</em> e <em>Power BI</em>.
+      Demonstração prática + código aberto.
+    </p>
+    <div class="hero__meta">
+      <div class="meta-item">
+        <div class="meta-num">9</div>
+        <div class="meta-lbl">etapas do dia</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-num">4</div>
+        <div class="meta-lbl">ferramentas</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-num">5</div>
+        <div class="meta-lbl">fundos simulados</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-num">25</div>
+        <div class="meta-lbl">boletas / dia</div>
+      </div>
+    </div>
+    <div class="hero__cta">
+      <a href="#abertura" class="cta cta--primary">Começar o pregão →</a>
+      <a href="#stack" class="cta cta--ghost">Ver stack técnico</a>
+    </div>
+  </div>
+
+  <div class="hero__terminal" aria-hidden="true">
+    <div class="term-bar">
+      <span class="term-dot"></span>
+      <span class="term-dot"></span>
+      <span class="term-dot"></span>
+      <span class="term-title">alpha-capital — backoffice — 80×24</span>
+    </div>
+    <pre class="term-body"><span class="term-prompt">$</span> python backoffice_alpha.py
+<span class="term-c">[1/4]</span> Carregando dados...
+      ✓ Posição inicial: 32 linhas
+      ✓ Boletas mesa: 25 linhas
+      ✓ Custódia: 50 linhas
+      ✓ Preços: 16 ativos
+<span class="term-c">[2/4]</span> Conciliando com custódia...
+      ✓ 48 posições OK, <span class="term-r">2 com divergência</span>
+<span class="term-c">[3/4]</span> Marcando a mercado...
+<span class="term-c">[4/4]</span> Calculando PL e cota por fundo...
+<span class="term-g">[OK]</span> Pipeline concluído.<span class="term-cursor">█</span></pre>
+  </div>
+</section>
+
+
+<!-- ========== SOBRE — VERSÃO CURTA ========== -->
+<section class="about-short" id="about-short">
+  <div class="about-short__inner">
+    <div class="about-short__badge">
+      <span class="about-short__avatar">RG</span>
+      <div class="about-short__meta">
+        <div class="about-short__name">Raphael M. G. Gonçalves</div>
+        <div class="about-short__role">Estudante de Economia · IBMEC · Rio de Janeiro</div>
+      </div>
+    </div>
+    <p class="about-short__text">
+      Construí este site, em parceria com o <strong>Claude (Anthropic)</strong>, como
+      ponte didática entre quem estuda e quem trabalha em backoffice de gestora. Foi
+      também um exercício de como integrar IA ao dia a dia profissional — não para
+      substituir conhecimento, mas para acelerar entrega.
+    </p>
+    <a href="#sobre" class="about-short__cta">Ler a história completa →</a>
+  </div>
+</section>
+
+<!-- ========== CONTEXTO ========== -->
+<section class="section section--intro" id="contexto">
+  <div class="section__head">
+    <div class="section__num">00</div>
+    <div class="section__kind">CONTEXTO</div>
+  </div>
+  <h2 class="section__title">A gestora Alpha Capital</h2>
+  <div class="prose">
+    <p>
+      Cinco fundos sob gestão. Volume diário girando entre <strong>R$ 10 e 30 milhões</strong>.
+      Operações em ações, renda fixa pública e privada, derivativos. Quatro corretoras parceiras
+      (XP, BTG, Itaú BBA, Bradesco) — cada uma com seu próprio <em>layout</em> de arquivo.
+      Um custodiante. Um administrador. Um auditor. E um operador de backoffice que precisa
+      garantir, todo dia até as 18h, que <strong>tudo bate</strong>.
+    </p>
+    <p>
+      É essa rotina que reconstruímos aqui. Cada hora do dia tem um problema concreto e
+      a ferramenta certa pra resolver. Abaixo de cada demonstração, o código aberto pra
+      você copiar, adaptar, estudar.
+    </p>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="card__num">5</div>
+      <div class="card__lbl">FUNDOS</div>
+      <ul class="card__list">
+        <li>ALPHA_ACOES_FIA</li>
+        <li>ALPHA_MULTIMERCADO_FIM</li>
+        <li>ALPHA_RF_FIRF</li>
+        <li>ALPHA_DIVIDENDOS_FIA</li>
+        <li>ALPHA_LONG_BIAS_FIM</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card__num">4</div>
+      <div class="card__lbl">CORRETORAS</div>
+      <ul class="card__list">
+        <li>XP — CSV (;)  latin-1</li>
+        <li>BTG — CSV (,)  utf-8</li>
+        <li>ITAU BBA — TXT (|)</li>
+        <li>BRADESCO — CSV (;)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card__num">16</div>
+      <div class="card__lbl">ATIVOS</div>
+      <ul class="card__list">
+        <li>12 ações (PETR4, VALE3...)</li>
+        <li>2 títulos públicos</li>
+        <li>1 CDB · 1 debênture</li>
+        <li>preços fim de pregão</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card__num">3+2</div>
+      <div class="card__lbl">DIVERGÊNCIAS</div>
+      <ul class="card__list">
+        <li>3 boletas com erro</li>
+        <li>2 posições custódia</li>
+        <li>injetadas de propósito</li>
+        <li>pra você ver o pipeline pegar</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+
+<!-- ========== 07:30 ABERTURA ========== -->
+<section class="section" id="abertura">
+  <div class="section__head">
+    <div class="section__num">01</div>
+    <div class="section__time">07:30</div>
+    <div class="section__kind">ABERTURA</div>
+  </div>
+  <h2 class="section__title">Chegou no escritório. Abre a planilha mestre.</h2>
+
+  <div class="problem">
+    <div class="problem__lbl">A SITUAÇÃO</div>
+    <p>
+      Antes de qualquer coisa: abrir o controle interno. É um <code>.xlsm</code> com várias abas —
+      <code>Boletas_Mesa</code>, <code>Boletas_Corretoras</code>, <code>Casamento</code>,
+      <code>Necessidade_Caixa</code>, <code>Parametros</code>. É a "central de operações" do dia.
+      Tudo que vai acontecer nas próximas 10 horas passa por essa planilha.
+    </p>
+  </div>
+
+  <div class="demo">
+    <div class="demo__lbl">DEMONSTRAÇÃO · ESTRUTURA DA PLANILHA</div>
+    <div class="excel-mockup">
+      <div class="excel-tabs">
+        <span class="excel-tab">Instrucoes</span>
+        <span class="excel-tab">Parametros</span>
+        <span class="excel-tab excel-tab--active">Boletas_Mesa</span>
+        <span class="excel-tab">Boletas_Corretoras</span>
+        <span class="excel-tab">Casamento</span>
+        <span class="excel-tab">Necessidade_Caixa</span>
+      </div>
+      <div class="excel-grid">
+        <div class="excel-row excel-row--head">
+          <div>boleta_id</div><div>data_op</div><div>fundo</div><div>ativo</div>
+          <div>lado</div><div>qtd</div><div>preco</div><div>financeiro</div><div>corretora</div>
+        </div>
+        <div class="excel-row"><div>10001</div><div>2026-04-28</div><div>ALPHA_LONG_BIAS_FIM</div><div>LFT_2029</div><div>V</div><div>10</div><div>14.462,91</div><div>144.629,10</div><div>BTG</div></div>
+        <div class="excel-row"><div>10002</div><div>2026-04-28</div><div>ALPHA_LONG_BIAS_FIM</div><div>DEB_VALE_2030</div><div>C</div><div>5</div><div>1.120,91</div><div>5.604,55</div><div>BTG</div></div>
+        <div class="excel-row"><div>10003</div><div>2026-04-28</div><div>ALPHA_MULTIMERCADO_FIM</div><div>NTNB_2035</div><div>C</div><div>50</div><div>4.165,90</div><div>208.295,00</div><div>BRADESCO</div></div>
+        <div class="excel-row"><div>10004</div><div>2026-04-28</div><div>ALPHA_LONG_BIAS_FIM</div><div>MGLU3</div><div>C</div><div>5.000</div><div>9,01</div><div>45.050,00</div><div>ITAU_BBA</div></div>
+        <div class="excel-row"><div>10005</div><div>2026-04-28</div><div>ALPHA_RF_FIRF</div><div>BBDC4</div><div>V</div><div>1.000</div><div>16,68</div><div>16.680,00</div><div>XP</div></div>
+        <div class="excel-row excel-row--more">+ 20 boletas adicionais...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="how">
+    <div class="how__lbl">COMO O OPERADOR FAZ</div>
+    <ol class="steps">
+      <li>Abre <code>Backoffice_Alpha_Capital.xlsm</code> e desabilita atualizações automáticas</li>
+      <li>Confere data de pregão na aba <code>Parametros</code></li>
+      <li>Verifica se as boletas da mesa do dia anterior já foram coladas em <code>Boletas_Mesa</code> (alguns OMS exportam direto, outros precisam de copy/paste manual)</li>
+      <li>Toma um café. O dia será longo.</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ========== 08:00 IMPORTAÇÃO ========== -->
+<section class="section" id="importacao">
+  <div class="section__head">
+    <div class="section__num">02</div>
+    <div class="section__time">08:00</div>
+    <div class="section__kind">IMPORTAÇÃO · VBA</div>
+  </div>
+  <h2 class="section__title">Quatro corretoras, quatro layouts diferentes.</h2>
+
+  <div class="problem">
+    <div class="problem__lbl">A DOR REAL</div>
+    <p>
+      Toda noite as corretoras enviam arquivos com as operações executadas. Cada uma com
+      seu padrão. <strong>XP</strong> manda CSV ponto-e-vírgula com vírgula decimal e encoding
+      <em>latin-1</em>. <strong>BTG</strong> manda CSV vírgula em <em>utf-8</em> com lado em inglês
+      ("BUY"/"SELL"). <strong>Itaú BBA</strong> usa pipe (<code>|</code>). <strong>Bradesco</strong>
+      tem cabeçalho com acentos e espaços. Sem automação, isso são 30-40 minutos de copia-e-cola
+      por dia, cheio de erro.
+    </p>
+  </div>
+
+  <div class="layouts">
+    <div class="layout">
+      <div class="layout__head"><span class="badge">XP</span> CSV / latin-1 / vírgula decimal</div>
+<pre class="layout__sample">DT_NEGOCIO;COD_CLIENTE;TICKER;C_V;QTDE;PRECO;VL_FINANCEIRO;ID_BOLETA
+20260428;ALPHA_DIVIDENDOS_FIA;BBDC4;C;5000;17,10;85500,00;10022
+20260428;ALPHA_RF_FIRF;B3SA3;C;200;12,44;2488,00;10009</pre>
+    </div>
+    <div class="layout">
+      <div class="layout__head"><span class="badge">BTG</span> CSV / utf-8 / BUY-SELL</div>
+<pre class="layout__sample">trade_date,account,symbol,side,quantity,price,notional,trade_id
+2026-04-28,ALPHA_RF_FIRF,WEGE3,BUY,5000,41.3500,206750.00,10006
+2026-04-28,ALPHA_MULTIMERCADO_FIM,ITUB4,BUY,500,33.6600,16830.00,10015</pre>
+    </div>
+    <div class="layout">
+      <div class="layout__head"><span class="badge">ITAU</span> TXT / pipe-separated</div>
+<pre class="layout__sample">DATA|FUNDO|PAPEL|OPER|QUANT|PU|FINANCEIRO|NUM_BOLETA
+2026-04-28|ALPHA_LONG_BIAS_FIM|MGLU3|C|5100|9.01|45951.00|10004
+2026-04-28|ALPHA_DIVIDENDOS_FIA|CDB_BTG_2027|C|10|1043.71|10437.10|10013</pre>
+    </div>
+    <div class="layout">
+      <div class="layout__head"><span class="badge">BRAD</span> CSV / cabeçalho humano</div>
+<pre class="layout__sample">Dt. Pregão;Cód. Cliente;Cód. Ativo;Compra/Venda;Quantidade;Preço Unitário;Valor Total;Boleta
+2026-04-28;ALPHA_RF_FIRF;ITUB4;Compra;200;33,72;6744,00;10018
+2026-04-28;ALPHA_ACOES_FIA;PETR4;Compra;1000;38,52;38520,00;10025</pre>
+    </div>
+  </div>
+
+  <div class="solution">
+    <div class="solution__lbl">A SOLUÇÃO · MACRO VBA</div>
+    <p>
+      Uma macro varre a pasta, identifica a corretora pelo nome do arquivo
+      (<code>Select Case</code>), aplica o parser correto pra cada layout, e despeja tudo
+      normalizado na aba <code>Boletas_Corretoras</code>. <strong>30 segundos no lugar de 30 minutos.</strong>
+    </p>
+  </div>
+
+  <div class="code-block">
+    <div class="code-head">
+      <span class="code-file">macros_backoffice.bas</span>
+      <span class="code-lang">VBA</span>
+      <button class="copy-btn" data-target="code-vba-importar">copiar</button>
+    </div>
+<pre class="code-body" id="code-vba-importar"><span class="c-com">'==============================================================================
+' MACRO 1 — IMPORTAR BOLETAS DAS CORRETORAS
+' Lê arquivos da pasta configurada e popula a aba Boletas_Corretoras.
+' Cada corretora tem layout próprio, por isso há um Select Case.
+'==============================================================================</span>
+<span class="c-key">Public Sub</span> ImportarBoletasCorretoras()
+    <span class="c-key">Dim</span> wsDest <span class="c-key">As</span> Worksheet
+    <span class="c-key">Dim</span> caminho <span class="c-key">As String</span>, arquivo <span class="c-key">As String</span>
+    <span class="c-key">Dim</span> linhaDest <span class="c-key">As Long</span>
+    <span class="c-key">Dim</span> t0 <span class="c-key">As Single</span>: t0 = Timer
+
+    <span class="c-key">Set</span> wsDest = ThisWorkbook.Sheets(<span class="c-str">"Boletas_Corretoras"</span>)
+    LimparAba wsDest
+    linhaDest = 2
+
+    caminho = LerParametro(<span class="c-str">"PASTA_CORRETORAS"</span>)
+    <span class="c-key">If</span> Right(caminho, 1) &lt;&gt; <span class="c-str">"\"</span> <span class="c-key">Then</span> caminho = caminho &amp; <span class="c-str">"\"</span>
+
+    arquivo = Dir(caminho &amp; <span class="c-str">"*.*"</span>)
+    <span class="c-key">If</span> arquivo = <span class="c-str">""</span> <span class="c-key">Then</span>
+        MsgBox <span class="c-str">"Nenhum arquivo encontrado em "</span> &amp; caminho, vbExclamation
+        <span class="c-key">Exit Sub</span>
+    <span class="c-key">End If</span>
+
+    Application.ScreenUpdating = <span class="c-key">False</span>
+
+    <span class="c-key">Do While</span> arquivo &lt;&gt; <span class="c-str">""</span>
+        <span class="c-com">' identifica corretora pelo nome do arquivo</span>
+        <span class="c-key">Select Case True</span>
+            <span class="c-key">Case</span> InStr(UCase(arquivo), <span class="c-str">"XP_"</span>) &gt; 0
+                linhaDest = ImportarXP(caminho &amp; arquivo, wsDest, linhaDest)
+            <span class="c-key">Case</span> InStr(UCase(arquivo), <span class="c-str">"BTG_"</span>) &gt; 0
+                linhaDest = ImportarBTG(caminho &amp; arquivo, wsDest, linhaDest)
+            <span class="c-key">Case</span> InStr(UCase(arquivo), <span class="c-str">"ITAU_BBA_"</span>) &gt; 0
+                linhaDest = ImportarItauBBA(caminho &amp; arquivo, wsDest, linhaDest)
+            <span class="c-key">Case</span> InStr(UCase(arquivo), <span class="c-str">"BRADESCO_"</span>) &gt; 0
+                linhaDest = ImportarBradesco(caminho &amp; arquivo, wsDest, linhaDest)
+        <span class="c-key">End Select</span>
+        arquivo = Dir
+    <span class="c-key">Loop</span>
+
+    Application.ScreenUpdating = <span class="c-key">True</span>
+
+    MsgBox <span class="c-str">"Importação concluída!"</span> &amp; vbCrLf &amp; _
+           (linhaDest - 2) &amp; <span class="c-str">" boletas importadas em "</span> &amp; _
+           Format(Timer - t0, <span class="c-str">"0.00"</span>) &amp; <span class="c-str">"s."</span>, vbInformation
+<span class="c-key">End Sub</span>
+
+<span class="c-com">' ----- Parser específico da XP (delimitador ; + vírgula decimal) --------</span>
+<span class="c-key">Private Function</span> ImportarXP(arq <span class="c-key">As String</span>, wsDest <span class="c-key">As</span> Worksheet, _
+                              linhaInicial <span class="c-key">As Long</span>) <span class="c-key">As Long</span>
+    <span class="c-key">Dim</span> fNum <span class="c-key">As Integer</span>, linha <span class="c-key">As String</span>
+    <span class="c-key">Dim</span> partes() <span class="c-key">As String</span>
+    <span class="c-key">Dim</span> ehHeader <span class="c-key">As Boolean</span>: ehHeader = <span class="c-key">True</span>
+    <span class="c-key">Dim</span> r <span class="c-key">As Long</span>: r = linhaInicial
+
+    fNum = FreeFile
+    <span class="c-key">Open</span> arq <span class="c-key">For Input As</span> #fNum
+    <span class="c-key">Do While Not</span> EOF(fNum)
+        <span class="c-key">Line Input</span> #fNum, linha
+        <span class="c-key">If</span> ehHeader <span class="c-key">Then</span> ehHeader = <span class="c-key">False</span>: <span class="c-key">GoTo</span> prox
+        partes = Split(linha, <span class="c-str">";"</span>)
+        <span class="c-key">If</span> UBound(partes) &gt;= 7 <span class="c-key">Then</span>
+            wsDest.Cells(r, 1).Value = <span class="c-str">"XP_"</span> &amp; Dir(arq)
+            wsDest.Cells(r, 2).Value = <span class="c-str">"XP"</span>
+            wsDest.Cells(r, 3).Value = CLng(partes(7))                <span class="c-com">' boleta_id</span>
+            wsDest.Cells(r, 4).Value = Left(partes(0), 4) &amp; <span class="c-str">"-"</span> &amp; _
+                                       Mid(partes(0), 5, 2) &amp; <span class="c-str">"-"</span> &amp; _
+                                       Right(partes(0), 2)            <span class="c-com">' data</span>
+            wsDest.Cells(r, 5).Value = partes(1)                       <span class="c-com">' fundo</span>
+            wsDest.Cells(r, 6).Value = partes(2)                       <span class="c-com">' ativo</span>
+            wsDest.Cells(r, 7).Value = partes(3)                       <span class="c-com">' lado</span>
+            wsDest.Cells(r, 8).Value = CLng(partes(4))                 <span class="c-com">' qtd</span>
+            wsDest.Cells(r, 9).Value = StrParaNumero(partes(5))        <span class="c-com">' preço</span>
+            wsDest.Cells(r, 10).Value = StrParaNumero(partes(6))       <span class="c-com">' financeiro</span>
+            r = r + 1
+        <span class="c-key">End If</span>
+prox:
+    <span class="c-key">Loop</span>
+    <span class="c-key">Close</span> #fNum
+    ImportarXP = r
+<span class="c-key">End Function</span>
+
+<span class="c-com">' Helper: converte "12,34" → 12.34</span>
+<span class="c-key">Private Function</span> StrParaNumero(<span class="c-key">ByVal</span> s <span class="c-key">As String</span>) <span class="c-key">As Double</span>
+    s = Replace(s, <span class="c-str">"."</span>, <span class="c-str">""</span>)
+    s = Replace(s, <span class="c-str">","</span>, <span class="c-str">"."</span>)
+    <span class="c-key">If</span> IsNumeric(s) <span class="c-key">Then</span> StrParaNumero = CDbl(s) <span class="c-key">Else</span> StrParaNumero = 0
+<span class="c-key">End Function</span></pre>
+  </div>
+</section>
+
+<!-- ========== 09:00 CASAMENTO ========== -->
+<section class="section" id="casamento">
+  <div class="section__head">
+    <div class="section__num">03</div>
+    <div class="section__time">09:00</div>
+    <div class="section__kind">CASAMENTO · VBA</div>
+  </div>
+  <h2 class="section__title">Mesa disse uma coisa, corretora outra. Quem está certo?</h2>
+
+  <div class="problem">
+    <div class="problem__lbl">A DOR REAL</div>
+    <p>
+      As 25 boletas da mesa precisam <em>casar</em> com as 25 boletas que a corretora reportou.
+      Mesmo <code>boleta_id</code>, mesmo fundo, mesmo ativo, mesma quantidade, mesmo preço.
+      Quando algo diverge — <strong>e sempre diverge em pelo menos 5% das boletas</strong> —
+      é hora de pegar o telefone.
+    </p>
+  </div>
+
+  <div class="demo">
+    <div class="demo__lbl">DEMONSTRAÇÃO · ABA CASAMENTO APÓS A MACRO</div>
+    <div class="excel-mockup">
+      <div class="excel-grid excel-grid--cas">
+        <div class="excel-row excel-row--head">
+          <div>boleta</div><div>fundo</div><div>ativo</div><div>qtd_mesa</div><div>qtd_corr</div><div>preço_mesa</div><div>preço_corr</div><div>diff%</div><div>status</div>
+        </div>
+        <div class="excel-row excel-row--ok">
+          <div>10001</div><div>ALPHA_LONG_BIAS</div><div>LFT_2029</div><div>10</div><div>10</div><div>14.462,91</div><div>14.462,91</div><div>0,00%</div><div>OK</div>
+        </div>
+        <div class="excel-row excel-row--ok">
+          <div>10002</div><div>ALPHA_LONG_BIAS</div><div>DEB_VALE_2030</div><div>5</div><div>5</div><div>1.120,91</div><div>1.120,91</div><div>0,00%</div><div>OK</div>
+        </div>
+        <div class="excel-row excel-row--div">
+          <div>10004</div><div>ALPHA_LONG_BIAS</div><div>MGLU3</div><div>5.000</div><div>5.100</div><div>9,01</div><div>9,01</div><div>0,00%</div><div>DIVERGENTE</div>
+        </div>
+        <div class="excel-row excel-row--ok">
+          <div>10005</div><div>ALPHA_RF_FIRF</div><div>BBDC4</div><div>1.000</div><div>1.000</div><div>16,68</div><div>16,68</div><div>0,00%</div><div>OK</div>
+        </div>
+        <div class="excel-row excel-row--div">
+          <div>10009</div><div>ALPHA_RF_FIRF</div><div>B3SA3</div><div>200</div><div>200</div><div>12,39</div><div>12,44</div><div>+0,40%</div><div>DIVERGENTE</div>
+        </div>
+        <div class="excel-row excel-row--falt">
+          <div>10017</div><div>ALPHA_ACOES_FIA</div><div>PETR4</div><div>2.000</div><div>—</div><div>38,45</div><div>—</div><div>—</div><div>FALTA_CORRETORA</div>
+        </div>
+      </div>
+    </div>
+    <div class="legend">
+      <span class="legend-item legend-item--ok">OK · bate em tudo</span>
+      <span class="legend-item legend-item--div">DIVERGENTE · qtd ou preço fora da tolerância</span>
+      <span class="legend-item legend-item--falt">FALTA · só um dos lados reportou</span>
+    </div>
+  </div>
+
+  <div class="how">
+    <div class="how__lbl">COMO O OPERADOR FAZ</div>
+    <ol class="steps">
+      <li>Roda a macro <code>CasarOperacoes</code> — leva ~2 segundos</li>
+      <li>Filtra por status ≠ OK na aba Casamento</li>
+      <li>Pra cada divergência, liga pra mesa da corretora: "boleta 10004, vocês registraram 5.100 mas a gente registrou 5.000"</li>
+      <li>Identifica quem errou (geralmente checa-se gravação ou log do FIX)</li>
+      <li>Ajusta o lado errado, registra motivo na coluna <code>observacao</code></li>
+    </ol>
+  </div>
+
+  <!-- ===== TOOL: Editor de Boletas ao Vivo ===== -->
+  <div class="tool" id="tool-edit">
+    <div class="tool__head">
+      <span class="tool__badge">⚙ FERRAMENTA INTERATIVA</span>
+      <span class="tool__name">Editor de boletas — casamento ao vivo</span>
+      <button class="tool__reset" data-reset="edit" title="Resetar boletas">⟲ reset</button>
+    </div>
+    <div class="tool__body">
+      <p class="tool__intro">
+        Edite quantidade ou preço da boleta da <strong>mesa</strong> e veja o status de
+        casamento mudar em tempo real. Adicione boletas novas, remova as existentes,
+        e simule o que acontece quando há divergência. É exatamente assim que o motor
+        do VBA funciona — só que agora você pode mexer.
+      </p>
+
+      <div class="edit-stats">
+        <div class="edit-stat edit-stat--ok">
+          <div class="edit-stat__num" id="edit-ok">0</div>
+          <div class="edit-stat__lbl">OK</div>
+        </div>
+        <div class="edit-stat edit-stat--div">
+          <div class="edit-stat__num" id="edit-div">0</div>
+          <div class="edit-stat__lbl">Divergentes</div>
+        </div>
+        <div class="edit-stat edit-stat--falt">
+          <div class="edit-stat__num" id="edit-falt">0</div>
+          <div class="edit-stat__lbl">Faltantes</div>
+        </div>
+        <div class="edit-stat edit-stat--total">
+          <div class="edit-stat__num" id="edit-total">0</div>
+          <div class="edit-stat__lbl">Total</div>
+        </div>
+      </div>
+
+      <div class="edit-table">
+        <div class="edit-table__head">
+          <div>BOLETA</div>
+          <div>FUNDO</div>
+          <div>ATIVO</div>
+          <div>L</div>
+          <div>QTD MESA</div>
+          <div>PREÇO MESA</div>
+          <div>QTD CORR</div>
+          <div>PREÇO CORR</div>
+          <div>STATUS</div>
+          <div></div>
+        </div>
+        <div class="edit-table__rows" id="edit-rows"></div>
+      </div>
+
+      <button id="edit-add" class="tool__btn tool__btn--secondary">+ Adicionar boleta</button>
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-head">
+      <span class="code-file">macros_backoffice.bas</span>
+      <span class="code-lang">VBA</span>
+      <button class="copy-btn" data-target="code-vba-casar">copiar</button>
+    </div>
+<pre class="code-body" id="code-vba-casar"><span class="c-com">'==============================================================================
+' MACRO 2 — CASAR OPERAÇÕES (mesa x corretoras)
+' Compara cada boleta da mesa com a correspondente da corretora pelo boleta_id.
+' Marca status: OK / DIVERGENTE / FALTA_CORRETORA / FALTA_MESA
+'==============================================================================</span>
+<span class="c-key">Public Sub</span> CasarOperacoes()
+    <span class="c-key">Dim</span> wsMesa <span class="c-key">As</span> Worksheet, wsCorr <span class="c-key">As</span> Worksheet, wsCas <span class="c-key">As</span> Worksheet
+    <span class="c-key">Dim</span> ultMesa <span class="c-key">As Long</span>, ultCorr <span class="c-key">As Long</span>, r <span class="c-key">As Long</span>, i <span class="c-key">As Long</span>, j <span class="c-key">As Long</span>
+    <span class="c-key">Dim</span> tolPreco <span class="c-key">As Double</span>, tolQtd <span class="c-key">As Double</span>
+    <span class="c-key">Dim</span> achou <span class="c-key">As Boolean</span>
+    <span class="c-key">Dim</span> qtdM <span class="c-key">As Long</span>, qtdC <span class="c-key">As Long</span>
+    <span class="c-key">Dim</span> prM <span class="c-key">As Double</span>, prC <span class="c-key">As Double</span>, diffPct <span class="c-key">As Double</span>
+    <span class="c-key">Dim</span> status <span class="c-key">As String</span>, obs <span class="c-key">As String</span>
+
+    <span class="c-key">Set</span> wsMesa = ThisWorkbook.Sheets(<span class="c-str">"Boletas_Mesa"</span>)
+    <span class="c-key">Set</span> wsCorr = ThisWorkbook.Sheets(<span class="c-str">"Boletas_Corretoras"</span>)
+    <span class="c-key">Set</span> wsCas = ThisWorkbook.Sheets(<span class="c-str">"Casamento"</span>)
+    LimparAba wsCas
+
+    tolPreco = LerParametro(<span class="c-str">"TOLERANCIA_PRECO"</span>)
+    tolQtd = LerParametro(<span class="c-str">"TOLERANCIA_QTD"</span>)
+
+    ultMesa = wsMesa.Cells(wsMesa.Rows.Count, 1).End(xlUp).Row
+    ultCorr = wsCorr.Cells(wsCorr.Rows.Count, 1).End(xlUp).Row
+    r = 2
+    Application.ScreenUpdating = <span class="c-key">False</span>
+
+    <span class="c-com">' Para cada boleta da mesa, procurar a correspondente</span>
+    <span class="c-key">For</span> i = 2 <span class="c-key">To</span> ultMesa
+        achou = <span class="c-key">False</span>
+        qtdM = wsMesa.Cells(i, 6).Value
+        prM = wsMesa.Cells(i, 7).Value
+        <span class="c-key">For</span> j = 2 <span class="c-key">To</span> ultCorr
+            <span class="c-key">If</span> wsMesa.Cells(i, 1).Value = wsCorr.Cells(j, 3).Value <span class="c-key">Then</span>
+                achou = <span class="c-key">True</span>
+                qtdC = wsCorr.Cells(j, 8).Value
+                prC = wsCorr.Cells(j, 9).Value
+                diffPct = IIf(prM = 0, 0, (prC - prM) / prM)
+
+                <span class="c-key">If</span> Abs(qtdM - qtdC) &lt;= tolQtd <span class="c-key">And</span> Abs(diffPct) &lt;= tolPreco <span class="c-key">Then</span>
+                    status = <span class="c-str">"OK"</span>: obs = <span class="c-str">""</span>
+                <span class="c-key">Else</span>
+                    status = <span class="c-str">"DIVERGENTE"</span>: obs = <span class="c-str">""</span>
+                    <span class="c-key">If</span> Abs(qtdM - qtdC) &gt; tolQtd <span class="c-key">Then</span> obs = obs &amp; <span class="c-str">"qtd; "</span>
+                    <span class="c-key">If</span> Abs(diffPct) &gt; tolPreco <span class="c-key">Then</span> obs = obs &amp; <span class="c-str">"preco; "</span>
+                <span class="c-key">End If</span>
+
+                EscreverLinhaCasamento wsCas, r, wsMesa.Cells(i, 1).Value, _
+                    wsMesa.Cells(i, 3).Value, wsMesa.Cells(i, 4).Value, _
+                    wsMesa.Cells(i, 5).Value, qtdM, qtdC, prM, prC, _
+                    qtdM - qtdC, diffPct, status, obs
+                r = r + 1
+                <span class="c-key">Exit For</span>
+            <span class="c-key">End If</span>
+        <span class="c-key">Next</span> j
+
+        <span class="c-key">If Not</span> achou <span class="c-key">Then</span>
+            EscreverLinhaCasamento wsCas, r, wsMesa.Cells(i, 1).Value, _
+                wsMesa.Cells(i, 3).Value, wsMesa.Cells(i, 4).Value, _
+                wsMesa.Cells(i, 5).Value, qtdM, 0, prM, 0, qtdM, 0, _
+                <span class="c-str">"FALTA_CORRETORA"</span>, <span class="c-str">"sem correspondente na corretora"</span>
+            r = r + 1
+        <span class="c-key">End If</span>
+    <span class="c-key">Next</span> i
+
+    PintarCasamento wsCas, r - 1
+    Application.ScreenUpdating = <span class="c-key">True</span>
+    MsgBox <span class="c-str">"Casamento concluído. "</span> &amp; (r - 2) &amp; <span class="c-str">" linhas processadas."</span>, vbInformation
+<span class="c-key">End Sub</span>
+
+<span class="c-com">' Pinta as linhas conforme o status (verde/vermelho/amarelo)</span>
+<span class="c-key">Private Sub</span> PintarCasamento(ws <span class="c-key">As</span> Worksheet, ultLinha <span class="c-key">As Long</span>)
+    <span class="c-key">Dim</span> i <span class="c-key">As Long</span>, st <span class="c-key">As String</span>
+    <span class="c-key">For</span> i = 2 <span class="c-key">To</span> ultLinha
+        st = ws.Cells(i, 11).Value
+        <span class="c-key">Select Case</span> st
+            <span class="c-key">Case</span> <span class="c-str">"OK"</span>
+                ws.Range(ws.Cells(i, 1), ws.Cells(i, 12)).Interior.Color = RGB(198, 239, 206)
+            <span class="c-key">Case</span> <span class="c-str">"DIVERGENTE"</span>
+                ws.Range(ws.Cells(i, 1), ws.Cells(i, 12)).Interior.Color = RGB(255, 199, 206)
+            <span class="c-key">Case</span> <span class="c-str">"FALTA_CORRETORA"</span>, <span class="c-str">"FALTA_MESA"</span>
+                ws.Range(ws.Cells(i, 1), ws.Cells(i, 12)).Interior.Color = RGB(255, 235, 156)
+        <span class="c-key">End Select</span>
+    <span class="c-key">Next</span> i
+<span class="c-key">End Sub</span></pre>
+  </div>
+</section>
+
+<!-- ========== 10:00 CAIXA ========== -->
+<section class="section" id="caixa">
+  <div class="section__head">
+    <div class="section__num">04</div>
+    <div class="section__time">10:00</div>
+    <div class="section__kind">NECESSIDADE DE CAIXA · VBA</div>
+  </div>
+  <h2 class="section__title">Tem caixa pra liquidar tudo até as 16h?</h2>
+
+  <div class="problem">
+    <div class="problem__lbl">A DOR REAL</div>
+    <p>
+      Pra cada fundo, é preciso somar quanto sai (compras) e quanto entra (vendas) em cada
+      data de liquidação. Se o saldo líquido der negativo e o caixa do fundo não cobrir,
+      é <strong>shortfall</strong> — o gestor precisa providenciar liquidez (resgatar fundo
+      DI próprio, vender LFT, ou puxar linha overnight, que é cara).
+    </p>
+  </div>
+
+  <div class="demo">
+    <div class="demo__lbl">DEMONSTRAÇÃO · ABA NECESSIDADE_CAIXA</div>
+    <div class="excel-mockup">
+      <div class="excel-grid excel-grid--cx">
+        <div class="excel-row excel-row--head">
+          <div>fundo</div><div>data_liquidação</div><div>compras</div><div>vendas</div><div>saldo_líquido</div><div>alerta</div>
+        </div>
+        <div class="excel-row excel-row--ok">
+          <div>ALPHA_ACOES_FIA</div><div>2026-04-30 (D+2)</div><div>R$ 89.420,00</div><div>R$ 142.180,00</div><div>+R$ 52.760,00</div><div>OK</div>
+        </div>
+        <div class="excel-row excel-row--div">
+          <div>ALPHA_LONG_BIAS_FIM</div><div>2026-04-29 (D+1)</div><div>R$ 254.300,00</div><div>R$ 144.629,10</div><div>−R$ 109.670,90</div><div>SHORTFALL</div>
+        </div>
+        <div class="excel-row excel-row--ok">
+          <div>ALPHA_MULTIMERCADO_FIM</div><div>2026-04-29 (D+1)</div><div>R$ 208.295,00</div><div>R$ 220.500,00</div><div>+R$ 12.205,00</div><div>OK</div>
+        </div>
+        <div class="excel-row excel-row--ok">
+          <div>ALPHA_RF_FIRF</div><div>2026-04-30 (D+2)</div><div>R$ 142.300,00</div><div>R$ 168.880,00</div><div>+R$ 26.580,00</div><div>OK</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="how">
+    <div class="how__lbl">COMO O OPERADOR FAZ</div>
+    <ol class="steps">
+      <li>Roda a macro <code>GerarNecessidadeCaixa</code></li>
+      <li>Identifica linhas com alerta <code>SHORTFALL</code></li>
+      <li>Avisa o gestor por mensagem: "ALPHA_LONG_BIAS precisa de R$ 109.670 até 16h de amanhã"</li>
+      <li>Gestor decide: resgata fundo DI, vende LFT (que liquida em D+1), ou contrata linha</li>
+      <li>Backoffice registra a operação de liquidez como nova boleta</li>
+    </ol>
+  </div>
+
+  <div class="code-block">
+    <div class="code-head">
+      <span class="code-file">macros_backoffice.bas</span>
+      <span class="code-lang">VBA</span>
+      <button class="copy-btn" data-target="code-vba-caixa">copiar</button>
+    </div>
+<pre class="code-body" id="code-vba-caixa"><span class="c-com">'==============================================================================
+' MACRO 3 — GERAR NECESSIDADE DE CAIXA
+' Agrupa boletas por fundo + data de liquidação. Compras saem caixa,
+' vendas entram. Saldo líquido < 0 = precisa providenciar caixa.
+'==============================================================================</span>
+<span class="c-key">Public Sub</span> GerarNecessidadeCaixa()
+    <span class="c-key">Dim</span> wsMesa <span class="c-key">As</span> Worksheet, wsCx <span class="c-key">As</span> Worksheet
+    <span class="c-key">Dim</span> ult <span class="c-key">As Long</span>, i <span class="c-key">As Long</span>, r <span class="c-key">As Long</span>
+    <span class="c-key">Dim</span> chave <span class="c-key">As String</span>
+    <span class="c-key">Dim</span> dict <span class="c-key">As Object</span>
+    <span class="c-key">Dim</span> fundo <span class="c-key">As String</span>, dt <span class="c-key">As String</span>, lado <span class="c-key">As String</span>
+    <span class="c-key">Dim</span> valor <span class="c-key">As Double</span>
+
+    <span class="c-key">Set</span> wsMesa = ThisWorkbook.Sheets(<span class="c-str">"Boletas_Mesa"</span>)
+    <span class="c-key">Set</span> wsCx = ThisWorkbook.Sheets(<span class="c-str">"Necessidade_Caixa"</span>)
+    <span class="c-key">Set</span> dict = CreateObject(<span class="c-str">"Scripting.Dictionary"</span>)
+    LimparAba wsCx
+
+    ult = wsMesa.Cells(wsMesa.Rows.Count, 1).End(xlUp).Row
+
+    <span class="c-com">' Agrega compras e vendas por (fundo, data_liquidação)</span>
+    <span class="c-key">For</span> i = 2 <span class="c-key">To</span> ult
+        fundo = wsMesa.Cells(i, 3).Value
+        dt = CStr(wsMesa.Cells(i, 11).Value)
+        lado = wsMesa.Cells(i, 5).Value
+        valor = wsMesa.Cells(i, 8).Value
+        chave = fundo &amp; <span class="c-str">"|"</span> &amp; dt
+        <span class="c-key">If Not</span> dict.Exists(chave) <span class="c-key">Then</span> dict.Add chave, Array(0, 0)
+        <span class="c-key">Dim</span> arr <span class="c-key">As Variant</span>: arr = dict(chave)
+        <span class="c-key">If</span> lado = <span class="c-str">"C"</span> <span class="c-key">Then</span> arr(0) = arr(0) + valor <span class="c-key">Else</span> arr(1) = arr(1) + valor
+        dict(chave) = arr
+    <span class="c-key">Next</span> i
+
+    <span class="c-com">' Escreve resultado, com SHORTFALL em vermelho</span>
+    r = 2
+    <span class="c-key">Dim</span> k <span class="c-key">As Variant</span>
+    <span class="c-key">For Each</span> k <span class="c-key">In</span> dict.Keys
+        <span class="c-key">Dim</span> p() <span class="c-key">As String</span>: p = Split(CStr(k), <span class="c-str">"|"</span>)
+        <span class="c-key">Dim</span> arr2 <span class="c-key">As Variant</span>: arr2 = dict(k)
+        wsCx.Cells(r, 1).Value = p(0)                       <span class="c-com">' fundo</span>
+        wsCx.Cells(r, 2).Value = p(1)                       <span class="c-com">' data</span>
+        wsCx.Cells(r, 3).Value = arr2(0)                    <span class="c-com">' compras</span>
+        wsCx.Cells(r, 4).Value = arr2(1)                    <span class="c-com">' vendas</span>
+        wsCx.Cells(r, 5).Value = arr2(1) - arr2(0)          <span class="c-com">' saldo</span>
+        wsCx.Cells(r, 6).Value = IIf(arr2(1) - arr2(0) &lt; 0, <span class="c-str">"SHORTFALL"</span>, <span class="c-str">"OK"</span>)
+        <span class="c-key">If</span> wsCx.Cells(r, 6).Value = <span class="c-str">"SHORTFALL"</span> <span class="c-key">Then</span>
+            wsCx.Range(wsCx.Cells(r, 1), wsCx.Cells(r, 6)).Interior.Color = RGB(255, 199, 206)
+        <span class="c-key">End If</span>
+        r = r + 1
+    <span class="c-key">Next</span> k
+
+    MsgBox <span class="c-str">"Necessidade de caixa calculada para "</span> &amp; (r - 2) &amp; _
+           <span class="c-str">" combinações fundo/data."</span>, vbInformation
+<span class="c-key">End Sub</span></pre>
+  </div>
+</section>
+
+<!-- ========== 11:00 LIQUIDAÇÃO ========== -->
+<section class="section" id="liquidacao">
+  <div class="section__head">
+    <div class="section__num">05</div>
+    <div class="section__time">11:00</div>
+    <div class="section__kind">LIQUIDAÇÃO · SISTEMAS EXTERNOS</div>
+  </div>
+  <h2 class="section__title">Confirmar comandos no Selic, B3 e SPB.</h2>
+
+  <div class="problem">
+    <div class="problem__lbl">A DOR REAL</div>
+    <p>
+      Cada classe de ativo liquida em uma câmara diferente, com prazo diferente. Não tem
+      automação de fora — o operador acessa cada sistema (geralmente via portal web ou
+      sistema proprietário do custodiante) e confirma os comandos. Mas chega aqui com a
+      planilha consolidada do VBA aberta ao lado, com tudo já reconciliado.
+    </p>
+  </div>
+
+  <div class="prazos">
+    <div class="prazo">
+      <div class="prazo__head"><span class="prazo__d">D+0</span> mesmo dia</div>
+      <div class="prazo__body">
+        <strong>CDB · LCI · LCA · debêntures</strong> (quando negociado D+0)<br>
+        <span class="prazo__camara">Câmara: B3 (antiga Cetip)</span>
+      </div>
+    </div>
+    <div class="prazo">
+      <div class="prazo__head"><span class="prazo__d">D+1</span> 1 dia útil</div>
+      <div class="prazo__body">
+        <strong>Títulos públicos</strong> · LFT, LTN, NTN-B, NTN-F<br>
+        <strong>Opções</strong> (prêmio) · <strong>Futuros</strong> (ajuste diário)<br>
+        <span class="prazo__camara">Câmaras: Selic (público) · B3 (derivativos)</span>
+      </div>
+    </div>
+    <div class="prazo">
+      <div class="prazo__head"><span class="prazo__d">D+2</span> 2 dias úteis</div>
+      <div class="prazo__body">
+        <strong>Ações à vista</strong> · ETFs · BDRs<br>
+        <strong>Câmbio</strong> pronto/casado<br>
+        <span class="prazo__camara">Câmara: B3 / SPB</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="how">
+    <div class="how__lbl">COMO O OPERADOR FAZ</div>
+    <ol class="steps">
+      <li>Acessa o portal do custodiante (Bradesco Custódia, Itaú Custódia, etc.)</li>
+      <li>Confere boletas pendentes de confirmação</li>
+      <li>Pra renda fixa pública: confirma no Selic. Pra ações: B3. Pra câmbio: via SPB/STR</li>
+      <li>Verifica se as garantias (margem) estão suficientes na B3 — pra futuros</li>
+      <li>Acompanha durante o dia se há recusas ou quebras</li>
+    </ol>
+  </div>
+
+  <!-- ===== TOOL: Calculadora de Prazos de Liquidação ===== -->
+  <div class="tool" id="tool-liq">
+    <div class="tool__head">
+      <span class="tool__badge">⚙ FERRAMENTA INTERATIVA</span>
+      <span class="tool__name">Calculadora de prazos de liquidação</span>
+    </div>
+    <div class="tool__body">
+      <p class="tool__intro">
+        Escolha o ativo e a data da operação. A calculadora retorna a data efetiva
+        de liquidação considerando dias úteis, fins de semana e feriados nacionais.
+      </p>
+
+      <div class="tool__form">
+        <label class="tool__field">
+          <span class="tool__lbl">Ativo</span>
+          <select id="liq-ativo" class="tool__input">
+            <optgroup label="Renda variável">
+              <option value="acao" data-d="2">Ação à vista (D+2)</option>
+              <option value="opcao" data-d="1">Opção — prêmio (D+1)</option>
+              <option value="futuro" data-d="1">Futuro — ajuste (D+1)</option>
+              <option value="etf" data-d="2">ETF (D+2)</option>
+              <option value="bdr" data-d="2">BDR (D+2)</option>
+            </optgroup>
+            <optgroup label="Renda fixa">
+              <option value="lft" data-d="1">Tesouro Selic — LFT (D+1)</option>
+              <option value="ltn" data-d="1">Tesouro Prefixado — LTN (D+1)</option>
+              <option value="ntnb" data-d="1">Tesouro IPCA+ — NTN-B (D+1)</option>
+              <option value="cdb" data-d="0">CDB / LCI / LCA (D+0)</option>
+              <option value="deb" data-d="0">Debênture (D+0)</option>
+            </optgroup>
+            <optgroup label="Câmbio">
+              <option value="cambio" data-d="2">Dólar pronto/casado (D+2)</option>
+            </optgroup>
+          </select>
+        </label>
+
+        <label class="tool__field">
+          <span class="tool__lbl">Data da operação</span>
+          <input type="date" id="liq-data" class="tool__input">
+        </label>
+
+        <button id="liq-calc" class="tool__btn">Calcular →</button>
+      </div>
+
+      <div class="tool__result" id="liq-result" hidden>
+        <div class="liq-grid">
+          <div class="liq-block">
+            <div class="liq-block__lbl">DATA DA OPERAÇÃO (D+0)</div>
+            <div class="liq-block__val" id="liq-d0">—</div>
+            <div class="liq-block__sub" id="liq-d0-sub">—</div>
+          </div>
+          <div class="liq-arrow">→</div>
+          <div class="liq-block liq-block--accent">
+            <div class="liq-block__lbl">DATA DE LIQUIDAÇÃO</div>
+            <div class="liq-block__val" id="liq-dn">—</div>
+            <div class="liq-block__sub" id="liq-dn-sub">—</div>
+          </div>
+        </div>
+        <div class="liq-info" id="liq-info"></div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- ========== 14:00 CONCILIAÇÃO PYTHON ========== -->
+<section class="section" id="conciliacao">
+  <div class="section__head">
+    <div class="section__num">06</div>
+    <div class="section__time">14:00</div>
+    <div class="section__kind">CONCILIAÇÃO CUSTÓDIA · PYTHON</div>
+  </div>
+  <h2 class="section__title">A custódia mandou 50.000 linhas. Excel travaria.</h2>
+
+  <div class="problem">
+    <div class="problem__lbl">A DOR REAL</div>
+    <p>
+      Todo dia o custodiante envia a posição oficial de cada fundo: ticker, quantidade,
+      saldo. A gestora precisa <strong>cruzar com o controle interno</strong> e identificar
+      divergências — geralmente eventos corporativos (dividendos, bonificações, splits)
+      que não foram tratados internamente, ou boletas canceladas em um lado e não no outro.
+      Em volume real, são dezenas de milhares de linhas. <strong>Aqui Python brilha.</strong>
+    </p>
+  </div>
+
+  <div class="demo">
+    <div class="demo__lbl">DEMONSTRAÇÃO · OUTPUT DA CONCILIAÇÃO</div>
+<pre class="terminal-output">$ python backoffice_alpha.py
+
+[2/4] Conciliando com custódia...
+      ✓ 48 posições OK, <span class="t-r">2 com divergência</span>
+
+>>> Detalhe das divergências:
+┌──────────────────────┬───────┬────────────┬──────────────┬────────┬───────────────┐
+│ fundo                │ ativo │ qtd_interno│ qtd_custodia │ diff   │ status        │
+├──────────────────────┼───────┼────────────┼──────────────┼────────┼───────────────┤
+│ ALPHA_ACOES_FIA      │ PETR4 │       2000 │         2050 │   -50  │ DIVERGENTE    │
+│ ALPHA_ACOES_FIA      │ VALE3 │          0 │          200 │  -200  │ SO_CUSTODIA   │
+└──────────────────────┴───────┴────────────┴──────────────┴────────┴───────────────┘
+
+>>> Causa provável:
+    PETR4: bonificação de 2,5% em 23/04 não tratada internamente
+    VALE3: ações novas creditadas por subscrição (50% das já detidas)
+</pre>
+  </div>
+
+  <div class="how">
+    <div class="how__lbl">COMO O OPERADOR FAZ</div>
+    <ol class="steps">
+      <li>Roda <code>python backoffice_alpha.py</code> ou clica num <code>.bat</code> que dispara</li>
+      <li>Abre o Excel <code>backoffice_resultado.xlsx</code> gerado, aba <code>Conciliacao_Custodia</code></li>
+      <li>Filtra por <code>status_conciliacao ≠ OK</code></li>
+      <li>Investiga cada divergência: olha histórico de eventos corporativos, boletas canceladas, BTC (empréstimo de ações)</li>
+      <li>Trata internamente (cria boleta de ajuste) ou contesta com o custodiante</li>
+    </ol>
+  </div>
+
+  <div class="code-block">
+    <div class="code-head">
+      <span class="code-file">backoffice_alpha.py</span>
+      <span class="code-lang">PYTHON · pandas</span>
+      <button class="copy-btn" data-target="code-py-conc">copiar</button>
+    </div>
+<pre class="code-body" id="code-py-conc"><span class="c-com">"""
+Conciliação com custódia: cruza posição interna calculada
+(posicao_inicial + boletas) com a posição enviada pela custódia.
+"""</span>
+<span class="c-key">import</span> pandas <span class="c-key">as</span> pd
+<span class="c-key">import</span> numpy <span class="c-key">as</span> np
+<span class="c-key">from</span> pathlib <span class="c-key">import</span> Path
+
+BASE = Path(__file__).resolve().parent.parent
+
+<span class="c-key">def</span> <span class="c-fn">calcular_posicao_interna</span>(pos_inicial, boletas):
+    <span class="c-com"># Aplica boletas (compras +, vendas -) sobre a posição inicial</span>
+    mov = boletas.copy()
+    mov[<span class="c-str">"delta_qtd"</span>] = np.where(
+        mov[<span class="c-str">"lado"</span>] == <span class="c-str">"C"</span>,
+        mov[<span class="c-str">"quantidade"</span>],
+        -mov[<span class="c-str">"quantidade"</span>]
+    )
+
+    mov_agg = (mov.groupby([<span class="c-str">"fundo"</span>, <span class="c-str">"ativo"</span>], as_index=<span class="c-key">False</span>)
+                  .agg(delta_qtd=(<span class="c-str">"delta_qtd"</span>, <span class="c-str">"sum"</span>)))
+
+    pos = pos_inicial.merge(mov_agg, on=[<span class="c-str">"fundo"</span>, <span class="c-str">"ativo"</span>], how=<span class="c-str">"outer"</span>)
+    pos[<span class="c-str">"quantidade"</span>] = pos[<span class="c-str">"quantidade"</span>].fillna(0)
+    pos[<span class="c-str">"delta_qtd"</span>] = pos[<span class="c-str">"delta_qtd"</span>].fillna(0)
+    pos[<span class="c-str">"qtd_interno"</span>] = pos[<span class="c-str">"quantidade"</span>] + pos[<span class="c-str">"delta_qtd"</span>]
+
+    <span class="c-key">return</span> pos[pos[<span class="c-str">"qtd_interno"</span>] != 0][[<span class="c-str">"fundo"</span>, <span class="c-str">"ativo"</span>, <span class="c-str">"qtd_interno"</span>]]
+
+
+<span class="c-key">def</span> <span class="c-fn">conciliar_custodia</span>(pos_interna, custodia):
+    <span class="c-com"># Cruza posição interna x custódia. Marca o status da divergência.</span>
+    cust = custodia[[<span class="c-str">"fundo"</span>, <span class="c-str">"ativo"</span>, <span class="c-str">"qtd_custodia"</span>]].copy()
+
+    conc = pos_interna.merge(
+        cust,
+        on=[<span class="c-str">"fundo"</span>, <span class="c-str">"ativo"</span>],
+        how=<span class="c-str">"outer"</span>,
+        indicator=<span class="c-key">True</span>
+    )
+    conc[<span class="c-str">"qtd_interno"</span>] = conc[<span class="c-str">"qtd_interno"</span>].fillna(0)
+    conc[<span class="c-str">"qtd_custodia"</span>] = conc[<span class="c-str">"qtd_custodia"</span>].fillna(0)
+    conc[<span class="c-str">"diferenca"</span>] = conc[<span class="c-str">"qtd_interno"</span>] - conc[<span class="c-str">"qtd_custodia"</span>]
+
+    <span class="c-key">def</span> <span class="c-fn">classificar</span>(row):
+        <span class="c-key">if</span> row[<span class="c-str">"_merge"</span>] == <span class="c-str">"left_only"</span>:
+            <span class="c-key">return</span> <span class="c-str">"SO_INTERNO"</span>      <span class="c-com"># custódia não tem</span>
+        <span class="c-key">if</span> row[<span class="c-str">"_merge"</span>] == <span class="c-str">"right_only"</span>:
+            <span class="c-key">return</span> <span class="c-str">"SO_CUSTODIA"</span>     <span class="c-com"># interno não tem (evento corp.)</span>
+        <span class="c-key">if</span> abs(row[<span class="c-str">"diferenca"</span>]) &lt; 0.0001:
+            <span class="c-key">return</span> <span class="c-str">"OK"</span>
+        <span class="c-key">return</span> <span class="c-str">"DIVERGENTE"</span>
+
+    conc[<span class="c-str">"status_conciliacao"</span>] = conc.apply(classificar, axis=1)
+    conc = conc.drop(columns=<span class="c-str">"_merge"</span>)
+
+    qtd_ok = (conc[<span class="c-str">"status_conciliacao"</span>] == <span class="c-str">"OK"</span>).sum()
+    qtd_div = (conc[<span class="c-str">"status_conciliacao"</span>] != <span class="c-str">"OK"</span>).sum()
+    print(<span class="c-str">f"      ✓ {qtd_ok} posições OK, {qtd_div} com divergência"</span>)
+
+    <span class="c-key">return</span> conc
+
+
+<span class="c-com"># --- USO ---</span>
+pos_inicial = pd.read_csv(BASE / <span class="c-str">"dados/posicao_inicial.csv"</span>, sep=<span class="c-str">";"</span>)
+boletas = pd.read_csv(BASE / <span class="c-str">"dados/boletas_mesa.csv"</span>, sep=<span class="c-str">";"</span>)
+custodia = pd.read_csv(BASE / <span class="c-str">"custodia/posicao_custodia_20260428.csv"</span>, sep=<span class="c-str">";"</span>)
+custodia = custodia.rename(columns={
+    <span class="c-str">"CD_FUNDO"</span>: <span class="c-str">"fundo"</span>,
+    <span class="c-str">"CD_ATIVO"</span>: <span class="c-str">"ativo"</span>,
+    <span class="c-str">"QTD_CUSTODIA"</span>: <span class="c-str">"qtd_custodia"</span>
+})
+
+pos_interna = calcular_posicao_interna(pos_inicial, boletas)
+conc = conciliar_custodia(pos_interna, custodia)
+conc.to_excel(<span class="c-str">"output/conciliacao.xlsx"</span>, index=<span class="c-key">False</span>)</pre>
+  </div>
+</section>
+
+<!-- ========== 15:00 MARCAÇÃO ========== -->
+<section class="section" id="mtm">
+  <div class="section__head">
+    <div class="section__num">07</div>
+    <div class="section__time">15:00</div>
+    <div class="section__kind">MARCAÇÃO A MERCADO · PYTHON</div>
+  </div>
+  <h2 class="section__title">Quanto valem hoje as posições?</h2>
+
+  <div class="problem">
+    <div class="problem__lbl">A DOR REAL</div>
+    <p>
+      Pra fechar a cota do dia, é preciso calcular o <strong>valor de mercado</strong> de cada
+      posição (quantidade × preço de fechamento), somar tudo, abater taxas, e dividir pelo
+      número de cotas em circulação. Tudo precisa estar pronto até o envio à ANBIMA, no
+      máximo 22h. Em uma gestora real, isso envolve curvas de juros pra renda fixa,
+      eventos corporativos do dia, e <em>look-throughs</em> em cotas de outros fundos.
+    </p>
+  </div>
+
+  <div class="demo">
+    <div class="demo__lbl">DEMONSTRAÇÃO · CÁLCULO DE PL E COTA</div>
+<pre class="terminal-output">>>> PL e cota por fundo:
+                   fundo            pl_total    cota_hoje    rent_dia
+─────────────────────────────────────────────────────────────────────
+       <span class="t-up">ALPHA_ACOES_FIA</span>   R$ 8.137.548,60   3,524891    <span class="t-up">+0,0866%</span>
+<span class="t-up">ALPHA_MULTIMERCADO_FIM</span>   R$10.671.391,30   2,185903    <span class="t-up">+0,0528%</span>
+         <span class="t-up">ALPHA_RF_FIRF</span>   R$ 8.648.656,70   1,873145    <span class="t-up">+0,0446%</span>
+  <span class="t-dn">ALPHA_DIVIDENDOS_FIA</span>   R$ 6.792.724,20   4,103820    <span class="t-dn">−0,0351%</span>
+   <span class="t-up">ALPHA_LONG_BIAS_FIM</span>   R$15.518.891,55   1,953480    <span class="t-up">+0,0671%</span>
+─────────────────────────────────────────────────────────────────────
+                                              PL TOTAL: R$ 49.769.212,35
+</pre>
+  </div>
+
+  <div class="how">
+    <div class="how__lbl">COMO O OPERADOR FAZ</div>
+    <ol class="steps">
+      <li>Aguarda os preços de fechamento da B3 (chegam em geral entre 17h30 e 18h00)</li>
+      <li>Roda o pipeline Python que aplica preços × posição reconciliada</li>
+      <li>Confere PL contra o que o administrador calculou (deve bater até centavos)</li>
+      <li>Se houver divergência ≥ R$ 0,01 na cota, investiga e ajusta antes do envio</li>
+      <li>Envia cota à ANBIMA via portal próprio (até 22h)</li>
+    </ol>
+  </div>
+
+  <div class="code-block">
+    <div class="code-head">
+      <span class="code-file">backoffice_alpha.py</span>
+      <span class="code-lang">PYTHON · pandas + numpy</span>
+      <button class="copy-btn" data-target="code-py-mtm">copiar</button>
+    </div>
+<pre class="code-body" id="code-py-mtm"><span class="c-key">def</span> <span class="c-fn">marcar_mercado</span>(pos_interna, precos, boletas, pos_inicial):
+    <span class="c-com">"""
+    Aplica preço de fechamento sobre a quantidade pra obter valor de mercado.
+    Calcula também P&L do dia (preço fechamento - preço médio histórico).
+    """</span>
+    p = precos.rename(columns={<span class="c-str">"preco_fechamento"</span>: <span class="c-str">"preco_mercado"</span>})
+
+    <span class="c-com"># Preço médio do dia (média ponderada das boletas)</span>
+    pmd = (boletas.groupby([<span class="c-str">"fundo"</span>, <span class="c-str">"ativo"</span>])
+                  .apply(<span class="c-key">lambda</span> g: (g[<span class="c-str">"preco"</span>] * g[<span class="c-str">"quantidade"</span>]).sum()
+                                    / g[<span class="c-str">"quantidade"</span>].sum())
+                  .reset_index(name=<span class="c-str">"preco_medio_dia"</span>))
+
+    mtm = pos_interna.merge(p[[<span class="c-str">"ativo"</span>, <span class="c-str">"preco_mercado"</span>]], on=<span class="c-str">"ativo"</span>, how=<span class="c-str">"left"</span>)
+    mtm = mtm.merge(pmd, on=[<span class="c-str">"fundo"</span>, <span class="c-str">"ativo"</span>], how=<span class="c-str">"left"</span>)
+    mtm = mtm.merge(pos_inicial[[<span class="c-str">"fundo"</span>, <span class="c-str">"ativo"</span>, <span class="c-str">"preco_medio"</span>]],
+                    on=[<span class="c-str">"fundo"</span>, <span class="c-str">"ativo"</span>], how=<span class="c-str">"left"</span>)
+
+    mtm[<span class="c-str">"preco_mercado"</span>] = mtm[<span class="c-str">"preco_mercado"</span>].fillna(0)
+    mtm[<span class="c-str">"valor_mercado"</span>] = mtm[<span class="c-str">"qtd_interno"</span>] * mtm[<span class="c-str">"preco_mercado"</span>]
+
+    <span class="c-com"># P&amp;L = (preço atual - preço de referência) × qtd</span>
+    mtm[<span class="c-str">"preco_referencia"</span>] = mtm[<span class="c-str">"preco_medio"</span>].fillna(mtm[<span class="c-str">"preco_medio_dia"</span>])
+    mtm[<span class="c-str">"pnl_dia"</span>] = (mtm[<span class="c-str">"preco_mercado"</span>] - mtm[<span class="c-str">"preco_referencia"</span>]) * mtm[<span class="c-str">"qtd_interno"</span>]
+    mtm[<span class="c-str">"pnl_dia"</span>] = mtm[<span class="c-str">"pnl_dia"</span>].fillna(0)
+
+    <span class="c-key">return</span> mtm
+
+
+<span class="c-key">def</span> <span class="c-fn">calcular_pl_e_cota</span>(mtm, boletas, caixa_inicial, cotas_circulacao, cota_anterior):
+    <span class="c-com">"""
+    PL = soma(valor_mercado) + caixa atualizado.
+    Caixa atualizado = caixa inicial + vendas - compras.
+    Cota = PL / qtd cotas em circulação.
+    """</span>
+    boletas = boletas.copy()
+    boletas[<span class="c-str">"sinal"</span>] = np.where(boletas[<span class="c-str">"lado"</span>] == <span class="c-str">"C"</span>, -1, 1)
+    fluxo_caixa = (boletas.assign(fluxo=boletas[<span class="c-str">"sinal"</span>] * boletas[<span class="c-str">"valor_financeiro"</span>])
+                          .groupby(<span class="c-str">"fundo"</span>)[<span class="c-str">"fluxo"</span>].sum())
+
+    ativos_fundo = mtm.groupby(<span class="c-str">"fundo"</span>)[<span class="c-str">"valor_mercado"</span>].sum()
+
+    pl = pd.DataFrame({<span class="c-str">"fundo"</span>: list(cota_anterior.keys())})
+    pl[<span class="c-str">"valor_ativos"</span>]      = pl[<span class="c-str">"fundo"</span>].map(ativos_fundo).fillna(0)
+    pl[<span class="c-str">"caixa_inicial"</span>]     = pl[<span class="c-str">"fundo"</span>].map(caixa_inicial)
+    pl[<span class="c-str">"fluxo_caixa_dia"</span>]   = pl[<span class="c-str">"fundo"</span>].map(fluxo_caixa).fillna(0)
+    pl[<span class="c-str">"caixa_final"</span>]       = pl[<span class="c-str">"caixa_inicial"</span>] + pl[<span class="c-str">"fluxo_caixa_dia"</span>]
+    pl[<span class="c-str">"pl_total"</span>]          = pl[<span class="c-str">"valor_ativos"</span>] + pl[<span class="c-str">"caixa_final"</span>]
+    pl[<span class="c-str">"cotas_circulacao"</span>]  = pl[<span class="c-str">"fundo"</span>].map(cotas_circulacao)
+    pl[<span class="c-str">"cota_hoje"</span>]         = pl[<span class="c-str">"pl_total"</span>] / pl[<span class="c-str">"cotas_circulacao"</span>]
+    pl[<span class="c-str">"cota_ontem"</span>]        = pl[<span class="c-str">"fundo"</span>].map(cota_anterior)
+    pl[<span class="c-str">"rentabilidade_dia"</span>] = (pl[<span class="c-str">"cota_hoje"</span>] - pl[<span class="c-str">"cota_ontem"</span>]) / pl[<span class="c-str">"cota_ontem"</span>]
+
+    <span class="c-key">return</span> pl</pre>
+  </div>
+</section>
+
+<!-- ========== 17:00 POWER BI ========== -->
+<section class="section" id="bi">
+  <div class="section__head">
+    <div class="section__num">08</div>
+    <div class="section__time">17:00</div>
+    <div class="section__kind">DASHBOARD · POWER BI</div>
+  </div>
+  <h2 class="section__title">Vitrine pra gestor, sócio e compliance.</h2>
+
+  <div class="problem">
+    <div class="problem__lbl">A DOR REAL</div>
+    <p>
+      Excel mostra dados. Power BI mostra <strong>narrativa</strong>. O gestor abre no celular
+      durante a reunião com cotista, o sócio acompanha o PL em tempo real, o compliance vê
+      enquadramento. Tudo num só painel, atualizado automaticamente, com slicers e drill-through.
+    </p>
+  </div>
+
+  <div class="demo">
+    <div class="demo__lbl">DEMONSTRAÇÃO · MOCKUP DO DASHBOARD (PÁGINA EXECUTIVA)</div>
+    <div class="bi-mockup">
+      <div class="bi-head">
+        <div class="bi-title">ALPHA CAPITAL · VISÃO EXECUTIVA</div>
+        <div class="bi-date">D0 · 28/04/2026</div>
+      </div>
+      <div class="bi-kpis">
+        <div class="bi-kpi">
+          <div class="bi-kpi__lbl">PL TOTAL</div>
+          <div class="bi-kpi__val">R$ 49,77 mi</div>
+          <div class="bi-kpi__delta bi-kpi__delta--up">+R$ 87.420 vs D-1</div>
+        </div>
+        <div class="bi-kpi">
+          <div class="bi-kpi__lbl">RENT. DIA</div>
+          <div class="bi-kpi__val">+0,12%</div>
+          <div class="bi-kpi__delta bi-kpi__delta--up">acima do CDI</div>
+        </div>
+        <div class="bi-kpi">
+          <div class="bi-kpi__lbl">RENT. MÊS</div>
+          <div class="bi-kpi__val">+1,84%</div>
+          <div class="bi-kpi__delta bi-kpi__delta--up">+87 bps vs benchmark</div>
+        </div>
+        <div class="bi-kpi">
+          <div class="bi-kpi__lbl">RENT. YTD</div>
+          <div class="bi-kpi__val">+12,40%</div>
+          <div class="bi-kpi__delta bi-kpi__delta--up">vs Ibov +8,20%</div>
+        </div>
+      </div>
+      <div class="bi-row">
+        <div class="bi-card bi-card--bars">
+          <div class="bi-card__title">PL POR FUNDO (R$ mi)</div>
+          <div class="bi-bar"><span class="bi-bar__lbl">LONG_BIAS</span><span class="bi-bar__fill" style="width:100%"></span><span class="bi-bar__v">15,52</span></div>
+          <div class="bi-bar"><span class="bi-bar__lbl">MULTIMERC</span><span class="bi-bar__fill" style="width:69%"></span><span class="bi-bar__v">10,67</span></div>
+          <div class="bi-bar"><span class="bi-bar__lbl">RF_FIRF</span><span class="bi-bar__fill" style="width:56%"></span><span class="bi-bar__v">8,65</span></div>
+          <div class="bi-bar"><span class="bi-bar__lbl">ACOES_FIA</span><span class="bi-bar__fill" style="width:53%"></span><span class="bi-bar__v">8,14</span></div>
+          <div class="bi-bar"><span class="bi-bar__lbl">DIVIDENDOS</span><span class="bi-bar__fill" style="width:44%"></span><span class="bi-bar__v">6,79</span></div>
+        </div>
+        <div class="bi-card bi-card--line">
+          <div class="bi-card__title">EVOLUÇÃO DA COTA · ÚLTIMOS 30D</div>
+          <svg viewBox="0 0 300 120" class="bi-svg" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="ga" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.3"/>
+                <stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <path d="M0,80 L20,75 L40,82 L60,70 L80,68 L100,62 L120,58 L140,65 L160,55 L180,50 L200,52 L220,42 L240,40 L260,35 L280,28 L300,30 L300,120 L0,120 Z" fill="url(#ga)"/>
+            <path d="M0,80 L20,75 L40,82 L60,70 L80,68 L100,62 L120,58 L140,65 L160,55 L180,50 L200,52 L220,42 L240,40 L260,35 L280,28 L300,30" fill="none" stroke="var(--accent)" stroke-width="2"/>
+          </svg>
+        </div>
+      </div>
+      <div class="bi-row">
+        <div class="bi-card bi-card--full">
+          <div class="bi-card__title">DETALHAMENTO POR FUNDO</div>
+          <div class="bi-tab">
+            <div class="bi-tab__h"><div>FUNDO</div><div>PL</div><div>COTA</div><div>RENT.DIA</div><div>RENT.MÊS</div><div>RENT.YTD</div></div>
+            <div class="bi-tab__r"><div>ALPHA_ACOES_FIA</div><div>R$ 8,14 mi</div><div>3,524891</div><div class="t-up">+0,09%</div><div class="t-up">+2,15%</div><div class="t-up">+14,80%</div></div>
+            <div class="bi-tab__r"><div>ALPHA_MULTIMERCADO</div><div>R$ 10,67 mi</div><div>2,185903</div><div class="t-up">+0,05%</div><div class="t-up">+1,42%</div><div class="t-up">+10,90%</div></div>
+            <div class="bi-tab__r"><div>ALPHA_RF_FIRF</div><div>R$ 8,65 mi</div><div>1,873145</div><div class="t-up">+0,04%</div><div class="t-up">+0,98%</div><div class="t-up">+9,40%</div></div>
+            <div class="bi-tab__r"><div>ALPHA_DIVIDENDOS</div><div>R$ 6,79 mi</div><div>4,103820</div><div class="t-dn">−0,04%</div><div class="t-up">+1,75%</div><div class="t-up">+12,30%</div></div>
+            <div class="bi-tab__r"><div>ALPHA_LONG_BIAS</div><div>R$ 15,52 mi</div><div>1,953480</div><div class="t-up">+0,07%</div><div class="t-up">+2,40%</div><div class="t-up">+15,60%</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TOOL: Simulador de Cenários ===== -->
+  <div class="tool" id="tool-sim">
+    <div class="tool__head">
+      <span class="tool__badge">⚙ FERRAMENTA INTERATIVA</span>
+      <span class="tool__name">Simulador de cenários — what-if no PL</span>
+      <button class="tool__reset" data-reset="sim" title="Resetar cenário">⟲ reset</button>
+    </div>
+    <div class="tool__body">
+      <p class="tool__intro">
+        Mexa nos sliders pra simular variação dos preços de mercado. Veja em tempo real
+        o impacto no PL de cada fundo, na cota e na rentabilidade do dia. Útil pra
+        stress-tests rápidos antes de uma operação grande.
+      </p>
+
+      <div class="sim-layout">
+        <!-- Sliders à esquerda -->
+        <div class="sim-controls">
+          <div class="sim-controls__title">VARIAÇÃO DE PREÇOS (%)</div>
+
+          <div class="sim-slider" data-asset="PETR4">
+            <div class="sim-slider__head"><span>PETR4</span><span class="sim-slider__val">0,00%</span></div>
+            <input type="range" min="-15" max="15" step="0.1" value="0" class="sim-range">
+          </div>
+          <div class="sim-slider" data-asset="VALE3">
+            <div class="sim-slider__head"><span>VALE3</span><span class="sim-slider__val">0,00%</span></div>
+            <input type="range" min="-15" max="15" step="0.1" value="0" class="sim-range">
+          </div>
+          <div class="sim-slider" data-asset="ITUB4">
+            <div class="sim-slider__head"><span>ITUB4</span><span class="sim-slider__val">0,00%</span></div>
+            <input type="range" min="-15" max="15" step="0.1" value="0" class="sim-range">
+          </div>
+          <div class="sim-slider" data-asset="BBDC4">
+            <div class="sim-slider__head"><span>BBDC4</span><span class="sim-slider__val">0,00%</span></div>
+            <input type="range" min="-15" max="15" step="0.1" value="0" class="sim-range">
+          </div>
+          <div class="sim-slider" data-asset="WEGE3">
+            <div class="sim-slider__head"><span>WEGE3</span><span class="sim-slider__val">0,00%</span></div>
+            <input type="range" min="-15" max="15" step="0.1" value="0" class="sim-range">
+          </div>
+          <div class="sim-slider" data-asset="MGLU3">
+            <div class="sim-slider__head"><span>MGLU3</span><span class="sim-slider__val">0,00%</span></div>
+            <input type="range" min="-15" max="15" step="0.1" value="0" class="sim-range">
+          </div>
+
+          <div class="sim-presets">
+            <div class="sim-presets__lbl">CENÁRIOS PRÉ-DEFINIDOS</div>
+            <button class="sim-preset" data-preset="bull">📈 Alta geral +5%</button>
+            <button class="sim-preset" data-preset="bear">📉 Crash −10%</button>
+            <button class="sim-preset" data-preset="commod">🛢 Choque commodities</button>
+            <button class="sim-preset" data-preset="zero">⟲ Zerar tudo</button>
+          </div>
+        </div>
+
+        <!-- KPIs e tabela à direita -->
+        <div class="sim-output">
+          <div class="sim-kpis">
+            <div class="sim-kpi">
+              <div class="sim-kpi__lbl">PL TOTAL</div>
+              <div class="sim-kpi__val" id="sim-pl">R$ 49,77 mi</div>
+              <div class="sim-kpi__delta" id="sim-pl-delta">—</div>
+            </div>
+            <div class="sim-kpi">
+              <div class="sim-kpi__lbl">VARIAÇÃO</div>
+              <div class="sim-kpi__val" id="sim-var">R$ 0,00</div>
+              <div class="sim-kpi__delta" id="sim-var-delta">+0,00%</div>
+            </div>
+            <div class="sim-kpi">
+              <div class="sim-kpi__lbl">FUNDO MAIS IMPACTADO</div>
+              <div class="sim-kpi__val sim-kpi__val--small" id="sim-worst">—</div>
+              <div class="sim-kpi__delta" id="sim-worst-delta">—</div>
+            </div>
+          </div>
+
+          <div class="sim-table">
+            <div class="sim-table__head">
+              <div>FUNDO</div>
+              <div>PL ORIGINAL</div>
+              <div>PL SIMULADO</div>
+              <div>Δ R$</div>
+              <div>Δ %</div>
+            </div>
+            <div class="sim-table__rows" id="sim-rows"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="how">
+    <div class="how__lbl">COMO MONTAR</div>
+    <ol class="steps">
+      <li>Power BI Desktop → Obter Dados → Texto/CSV → importa os 5 CSVs gerados pelo Python</li>
+      <li>Cria tabela calendário com <code>CALENDAR()</code> e marca como tabela de datas</li>
+      <li>Modela em estrela: dimensões (fundos, calendário) ligadas aos fatos (boletas, posições, PL, conciliação)</li>
+      <li>Cria as medidas DAX (modelo abaixo)</li>
+      <li>Monta 4 páginas: Executiva, Operacional, Risco, Conciliação</li>
+      <li>Publica no Power BI Service com gateway local pra atualização diária após o Python rodar</li>
+    </ol>
+  </div>
+
+  <div class="code-block">
+    <div class="code-head">
+      <span class="code-file">medidas.dax</span>
+      <span class="code-lang">DAX · POWER BI</span>
+      <button class="copy-btn" data-target="code-dax">copiar</button>
+    </div>
+<pre class="code-body" id="code-dax"><span class="c-com">// ============================================================
+// MEDIDAS PRINCIPAIS — PL, RENTABILIDADE, CONCILIAÇÃO
+// ============================================================</span>
+
+<span class="c-fn">PL Total</span> = SUM(fPLFundos[pl_total])
+
+<span class="c-fn">PL Ativos</span> = SUM(fPosicoes[valor_mercado])
+
+<span class="c-fn">Rentabilidade Dia</span> =
+AVERAGEX(
+    VALUES(fPLFundos[fundo]),
+    CALCULATE(SUM(fPLFundos[rentabilidade_dia]))
+)
+
+<span class="c-fn">PnL Dia</span> = SUM(fPosicoes[pnl_dia])
+
+<span class="c-com">// ============================================================
+// VOLUME DE BOLETAS
+// ============================================================</span>
+
+<span class="c-fn">Volume Compras</span> =
+CALCULATE(SUM(fBoletas[valor_financeiro]), fBoletas[lado] = <span class="c-str">"C"</span>)
+
+<span class="c-fn">Volume Vendas</span> =
+CALCULATE(SUM(fBoletas[valor_financeiro]), fBoletas[lado] = <span class="c-str">"V"</span>)
+
+<span class="c-fn">Saldo Líquido</span> = [Volume Vendas] - [Volume Compras]
+
+<span class="c-com">// ============================================================
+// CONCILIAÇÃO COM CUSTÓDIA
+// ============================================================</span>
+
+<span class="c-fn">Posicoes OK</span> =
+CALCULATE(
+    COUNTROWS(fConciliacao),
+    fConciliacao[status_conciliacao] = <span class="c-str">"OK"</span>
+)
+
+<span class="c-fn">Posicoes Divergentes</span> =
+CALCULATE(
+    COUNTROWS(fConciliacao),
+    fConciliacao[status_conciliacao] &lt;&gt; <span class="c-str">"OK"</span>
+)
+
+<span class="c-fn">% Conciliação OK</span> =
+DIVIDE([Posicoes OK], COUNTROWS(fConciliacao))
+
+<span class="c-com">// ============================================================
+// TIME INTELLIGENCE — MTD, YTD
+// ============================================================</span>
+
+<span class="c-fn">Rentabilidade YTD</span> =
+CALCULATE(
+    [Rentabilidade Dia],
+    DATESYTD(dCalendario[Date])
+)
+
+<span class="c-fn">Rentabilidade Mês</span> =
+CALCULATE(
+    [Rentabilidade Dia],
+    DATESMTD(dCalendario[Date])
+)
+
+<span class="c-com">// ============================================================
+// ENQUADRAMENTO REGULATÓRIO (regulamento dos fundos)
+// ============================================================</span>
+
+<span class="c-fn">% Ações no PL</span> =
+DIVIDE(
+    CALCULATE([PL Ativos], fPosicoes[tipo] = <span class="c-str">"ACAO"</span>),
+    [PL Ativos]
+)
+
+<span class="c-fn">% Renda Fixa no PL</span> =
+DIVIDE(
+    CALCULATE([PL Ativos], fPosicoes[tipo] = <span class="c-str">"RF"</span>),
+    [PL Ativos]
+)
+
+<span class="c-fn">Status Enquadramento</span> =
+SWITCH(
+    TRUE(),
+    SELECTEDVALUE(dFundos[tipo_fundo]) = <span class="c-str">"Ações"</span>
+        &amp;&amp; [% Ações no PL] &gt;= 0.67, <span class="c-str">"✓ Enquadrado"</span>,
+    SELECTEDVALUE(dFundos[tipo_fundo]) = <span class="c-str">"Renda Fixa"</span>
+        &amp;&amp; [% Renda Fixa no PL] &gt;= 0.80, <span class="c-str">"✓ Enquadrado"</span>,
+    <span class="c-str">"✗ Verificar"</span>
+)</pre>
+  </div>
+</section>
+
+<!-- ========== 18:00 FECHAMENTO ========== -->
+<section class="section" id="fechamento">
+  <div class="section__head">
+    <div class="section__num">09</div>
+    <div class="section__time">18:00</div>
+    <div class="section__kind">FECHAMENTO</div>
+  </div>
+  <h2 class="section__title">Boa noite. Amanhã tem mais.</h2>
+
+  <div class="checklist">
+    <div class="check">✓ Todas as boletas com status OK ou tratadas</div>
+    <div class="check">✓ Conciliação com custódia zerada (ou divergências documentadas)</div>
+    <div class="check">✓ Cota do dia calculada e enviada à ANBIMA até 22h</div>
+    <div class="check">✓ CDA mensal atualizada (último dia útil)</div>
+    <div class="check">✓ Dashboard Power BI atualizado e publicado</div>
+    <div class="check">✓ Backup dos arquivos do dia (corretoras, custódia, output)</div>
+    <div class="check">✓ Email de fechamento ao gestor e diretoria</div>
+    <div class="check">✓ Pendências do dia seguinte anotadas</div>
+  </div>
+
+  <div class="prose">
+    <p>
+      Em uma gestora bem operada, fechamento é entre 18h e 19h em dia normal. Em dia de evento
+      corporativo grande (split, fusão), fim de mês com CDA, ou erro relevante, pode esticar
+      até 21h-22h. <strong>O backoffice é o último a sair.</strong>
+    </p>
+  </div>
+</section>
+
+<!-- ========== REFERÊNCIA: FLUXOS ========== -->
+<section class="section section--ref" id="fluxos">
+  <div class="section__head">
+    <div class="section__num">REF</div>
+    <div class="section__kind">FLUXOS DE LIQUIDAÇÃO BR</div>
+  </div>
+  <h2 class="section__title">Quem liquida o quê, em quanto tempo, em qual câmara.</h2>
+
+  <table class="ref-table">
+    <thead>
+      <tr><th>Ativo</th><th>Liquidação</th><th>Câmara</th><th>Notas</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Ações à vista</td><td><strong>D+2</strong></td><td>B3</td><td>movimento global p/ D+1</td></tr>
+      <tr><td>Opções (prêmio)</td><td>D+1</td><td>B3</td><td>—</td></tr>
+      <tr><td>Futuros (DI, DOL, IND)</td><td>D+1 (ajuste)</td><td>B3</td><td>ajuste diário c/ margem</td></tr>
+      <tr><td>Tesouro (LFT, LTN, NTN-B/F)</td><td>D+1</td><td>Selic (BCB)</td><td>DvP em tempo real</td></tr>
+      <tr><td>CDB, LCI, LCA</td><td>D+0 ou D+1</td><td>B3 (ex-Cetip)</td><td>conforme negociado</td></tr>
+      <tr><td>Debêntures, CRI, CRA</td><td>D+0 ou D+1</td><td>B3 (ex-Cetip)</td><td>conforme negociado</td></tr>
+      <tr><td>Câmbio pronto/casado</td><td>D+2</td><td>B3 / SPB</td><td>STR é o trilho do $</td></tr>
+      <tr><td>Cotas de fundos</td><td>D+0 a D+30</td><td>escrituradora</td><td>conforme regulamento</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="ref-sub">As três câmaras que importam</h3>
+  <div class="cameras">
+    <div class="cam">
+      <div class="cam__name">B3</div>
+      <div class="cam__desc">
+        Brasil, Bolsa, Balcão. Câmara única após fusão BM&amp;FBovespa + Cetip (2017).
+        Liquida ações, derivativos, ETFs, BDRs e renda fixa privada (CDB, debêntures,
+        LCI/LCA, CRI/CRA).
+      </div>
+    </div>
+    <div class="cam">
+      <div class="cam__name">SELIC</div>
+      <div class="cam__desc">
+        Sistema Especial de Liquidação e Custódia, operado pelo Banco Central. Liquida
+        exclusivamente títulos públicos federais e operações compromissadas (repo).
+        DvP em tempo real entre instituições.
+      </div>
+    </div>
+    <div class="cam">
+      <div class="cam__name">SPB</div>
+      <div class="cam__desc">
+        Sistema de Pagamentos Brasileiro — conjunto de sistemas (STR, SILOC, CIP, Selic).
+        Pra backoffice: STR é o trilho do dinheiro de alto valor (transferências entre
+        bancos pra liquidar operações grandes).
+      </div>
+    </div>
+  </div>
+
+  <h3 class="ref-sub">Onde tudo dá errado</h3>
+  <div class="errors">
+    <div class="err">
+      <div class="err__h">Quebra de boleta</div>
+      <div class="err__b">Mesa registrou X, corretora registrou Y. Resolução: gravação de voice trade ou log do FIX.</div>
+    </div>
+    <div class="err">
+      <div class="err__h">Falha de liquidação</div>
+      <div class="err__b">Fundo sem caixa pra honrar compra. Solução: resgate de DI, venda de LFT, linha overnight.</div>
+    </div>
+    <div class="err">
+      <div class="err__h">Falha de custódia</div>
+      <div class="err__b">PL interno ≠ PL custódia. Causas: evento corporativo, BTC, boleta cancelada de um lado só.</div>
+    </div>
+    <div class="err">
+      <div class="err__h">Cota errada</div>
+      <div class="err__b">Republica c/ cota correta. Se afetou cotista que aplicou/resgatou, gestora indeniza.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== STACK ========== -->
+<section class="section section--ref" id="stack">
+  <div class="section__head">
+    <div class="section__num">STK</div>
+    <div class="section__kind">STACK TÉCNICO</div>
+  </div>
+  <h2 class="section__title">Excel · VBA · Python · Power BI — qual serve pra quê.</h2>
+
+  <div class="stack">
+    <div class="stack-item">
+      <div class="stack-item__name"><span class="stack-item__icon">📊</span> EXCEL</div>
+      <div class="stack-item__role">Chão de fábrica</div>
+      <p>Visual, flexível, todo mundo conhece. Planilha-mestre, controle visual, ajustes manuais, comunicação rápida com a mesa. Onde o backoffice vive 80% do tempo.</p>
+      <div class="stack-item__skills">PROCV · ÍNDICE+CORRESP · SOMASES · Tab.Dinâmica · Form.Condicional</div>
+    </div>
+    <div class="stack-item">
+      <div class="stack-item__name"><span class="stack-item__icon">⚙️</span> VBA</div>
+      <div class="stack-item__role">Automação no Excel</div>
+      <p>Repetir tarefas chatas dentro do Excel. Ideal pra importar arquivos de N corretoras com layouts diferentes, casar boletas, gerar relatórios padronizados. Reduz erro humano e tempo.</p>
+      <div class="stack-item__skills">Range/Cells · Loops · Select Case · File I/O · Dictionary · Error Handling</div>
+    </div>
+    <div class="stack-item">
+      <div class="stack-item__name"><span class="stack-item__icon">🐍</span> PYTHON</div>
+      <div class="stack-item__role">Volume e cálculo</div>
+      <p>Quando os dados estouram o Excel ou o cálculo é complexo. Conciliação com dezenas de milhares de linhas, marcação a mercado vetorizada, integração com APIs e bancos.</p>
+      <div class="stack-item__skills">pandas · numpy · merge/groupby · openpyxl · requests · matplotlib</div>
+    </div>
+    <div class="stack-item">
+      <div class="stack-item__name"><span class="stack-item__icon">📈</span> POWER BI</div>
+      <div class="stack-item__role">Vitrine e decisão</div>
+      <p>Transforma o que Excel/VBA/Python produzem em painéis que gestor, sócio e compliance leem em segundos. Atualização automática, mobile, alertas configuráveis.</p>
+      <div class="stack-item__skills">Power Query (M) · Modelagem em estrela · DAX · Time Intelligence</div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== DOWNLOAD ========== -->
+<section class="section section--download" id="download">
+  <div class="section__head">
+    <div class="section__num">DL</div>
+    <div class="section__kind">PROJETO COMPLETO</div>
+  </div>
+  <h2 class="section__title">Baixar e rodar localmente.</h2>
+
+  <div class="prose">
+    <p>
+      O projeto inteiro — dados sintéticos, scripts Python, planilha Excel com macros VBA,
+      documentação do Power BI e dos fluxos de liquidação — está disponível como zip pra
+      download. Roda local, sem dependências externas além do Python (pandas + openpyxl)
+      e Excel/Power BI Desktop.
+    </p>
+  </div>
+
+  <div class="dl-grid">
+    <a href="alpha_capital_projeto.zip" class="dl-card" download>
+      <div class="dl-card__icon">⬇</div>
+      <div class="dl-card__name">alpha_capital_projeto.zip</div>
+      <div class="dl-card__desc">Projeto completo (≈ 60 KB)</div>
+    </a>
+    <a href="https://github.com/raphael-rj/alpha-capital-backoffice" class="dl-card" target="_blank" rel="noopener">
+      <div class="dl-card__icon">⌥</div>
+      <div class="dl-card__name">GitHub Repository</div>
+      <div class="dl-card__desc">(crie e suba o projeto pra ter um link real)</div>
+    </a>
+  </div>
+
+  <div class="instructions">
+    <h3>Como rodar em 3 passos</h3>
+<pre class="code-body code-body--small">
+<span class="c-com"># 1) Descompacte e entre na pasta</span>
+unzip alpha_capital_projeto.zip
+cd alpha_capital
+
+<span class="c-com"># 2) Gere os dados sintéticos e rode o pipeline Python</span>
+python scripts/gerar_dados.py
+python scripts/gerar_excel.py
+python scripts/backoffice_alpha.py
+
+<span class="c-com"># 3) Abra o Excel e importe as macros VBA</span>
+<span class="c-com"># - Abra output/Backoffice_Alpha_Capital.xlsx</span>
+<span class="c-com"># - Salve como .xlsm</span>
+<span class="c-com"># - Alt+F11 → File → Import File → output/macros_backoffice.bas</span>
+<span class="c-com"># - Ajuste o caminho na aba Parametros</span>
+<span class="c-com"># - Alt+F8 → AtualizarTudo</span>
+</pre>
+  </div>
+</section>
+
+</div><!-- /tab-diario -->
+
+<!-- ========== TAB: MERCADO ========== -->
+<div class="tab-panel" id="tab-mercado" role="tabpanel" hidden>
+
+  <section class="mkt-hero">
+    <div class="mkt-hero__head">
+      <div class="mkt-hero__eyebrow">
+        <span class="dot dot--live"></span>
+        BOLSA EM TEMPO REAL · DADOS SIMULADOS
+      </div>
+      <h1 class="mkt-hero__title">
+        <span>O mercado,</span>
+        <span class="title-line--accent">em tempo real.</span>
+      </h1>
+      <p class="mkt-hero__sub">
+        Cotações dos principais ativos da B3, status do pregão, e acesso direto
+        aos 4 portais que pautam o mercado brasileiro.
+      </p>
+    </div>
+
+    <!-- Status do mercado -->
+    <div class="mkt-status">
+      <div class="mkt-status__item">
+        <div class="mkt-status__lbl">PREGÃO</div>
+        <div class="mkt-status__val" id="mkt-status">—</div>
+        <div class="mkt-status__sub" id="mkt-status-sub">—</div>
+      </div>
+      <div class="mkt-status__item">
+        <div class="mkt-status__lbl">HORÁRIO B3</div>
+        <div class="mkt-status__val" id="mkt-clock">—</div>
+        <div class="mkt-status__sub">São Paulo · GMT-3</div>
+      </div>
+      <div class="mkt-status__item">
+        <div class="mkt-status__lbl">IBOVESPA</div>
+        <div class="mkt-status__val" id="mkt-ibov">—</div>
+        <div class="mkt-status__sub" id="mkt-ibov-delta">—</div>
+      </div>
+      <div class="mkt-status__item">
+        <div class="mkt-status__lbl">DÓLAR</div>
+        <div class="mkt-status__val" id="mkt-usd">—</div>
+        <div class="mkt-status__sub" id="mkt-usd-delta">—</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Ticker grande de cotações -->
+  <section class="mkt-ticker">
+    <div class="mkt-ticker__head">
+      <span class="mkt-ticker__lbl">▶ COTAÇÕES AO VIVO · IBOVESPA</span>
+      <span class="mkt-ticker__update" id="mkt-ticker-update">atualizando...</span>
+    </div>
+    <div class="mkt-grid" id="mkt-grid">
+      <!-- preenchido por JS -->
+    </div>
+  </section>
+
+  <!-- ===== FAIXA DE FECHAMENTO + PAINEL LATERAL (CNN-style) ===== -->
+  <section class="cnn-block">
+    <!-- Lado esquerdo: agenda econômica -->
+    <div class="cnn-agenda">
+      <div class="cnn-agenda__head">
+        <div class="cnn-agenda__title">▶ DESTAQUES DA SEMANA</div>
+        <div class="cnn-agenda__sub">AGENDA ECONÔMICA</div>
+        <div class="cnn-agenda__week" id="cnn-agenda-week">carregando...</div>
+      </div>
+      <div class="cnn-agenda__grid" id="cnn-agenda-grid">
+        <!-- preenchido por JS lendo agenda.json -->
+      </div>
+    </div>
+
+    <!-- Lado direito: painel de destaques (mini-gráficos) -->
+    <div class="cnn-panel">
+      <div class="cnn-panel__head">
+        <div class="cnn-panel__status" id="cnn-panel-status">
+          <span class="cnn-status-dot"></span>
+          <span class="cnn-status-text">CARREGANDO</span>
+        </div>
+      </div>
+      <div class="cnn-panel__list" id="cnn-panel-list">
+        <!-- preenchido por JS -->
+      </div>
+    </div>
+
+    <!-- Lateral direita extrema: índices secundários -->
+    <div class="cnn-indices">
+      <div class="cnn-indices__list" id="cnn-indices-list">
+        <!-- preenchido por JS -->
+      </div>
+      <div class="cnn-indices__footer">
+        Dados com até 15 min de atraso<br>quando disponíveis
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FAIXA INFERIOR (estilo rodapé CNN) ===== -->
+  <section class="cnn-bottom">
+    <div class="cnn-bottom__brand">
+      <span class="cnn-bottom__live">
+        <span class="cnn-status-dot"></span>
+        <span id="cnn-bottom-live">AO VIVO</span>
+      </span>
+      <span class="cnn-bottom__divider">|</span>
+      <span class="cnn-bottom__noticias">NOTÍCIAS</span>
+    </div>
+    <div class="cnn-bottom__news" id="cnn-bottom-news">
+      <!-- preenchido por JS -->
+    </div>
+    <div class="cnn-bottom__brand cnn-bottom__brand--right">
+      <span class="cnn-bottom__money">BO·OPS <strong>MARKETS</strong></span>
+      <span class="cnn-bottom__time" id="cnn-bottom-time">--:--</span>
+    </div>
+  </section>
+
+  <!-- Heatmap visual -->
+  <section class="mkt-heatmap-wrap">
+    <h2 class="mkt-section-title">HEATMAP · IBOVESPA</h2>
+    <p class="mkt-section-desc">
+      Tamanho do bloco proporcional ao peso do ativo no Ibovespa.
+      Verde mais forte = maior alta. Vermelho mais forte = maior queda.
+    </p>
+    <div class="mkt-heatmap" id="mkt-heatmap"></div>
+  </section>
+
+  <!-- Movers (top alta e top baixa) -->
+  <section class="mkt-movers">
+    <div class="mkt-movers__col">
+      <h3 class="mkt-movers__title mkt-movers__title--up">▲ MAIORES ALTAS</h3>
+      <div class="mkt-movers__list" id="mkt-movers-up"></div>
+    </div>
+    <div class="mkt-movers__col">
+      <h3 class="mkt-movers__title mkt-movers__title--dn">▼ MAIORES BAIXAS</h3>
+      <div class="mkt-movers__list" id="mkt-movers-dn"></div>
+    </div>
+  </section>
+
+  <!-- 4 PORTAIS -->
+  <section class="mkt-portals">
+    <h2 class="mkt-section-title">FONTES DE REFERÊNCIA · MERCADO BRASILEIRO</h2>
+    <p class="mkt-section-desc">
+      Os 4 portais que pautam o noticiário financeiro no Brasil. Clique para acessar a home de cada um.
+    </p>
+
+    <div class="mkt-portals__grid">
+
+      <!-- VALOR ECONÔMICO -->
+      <a href="https://valor.globo.com" target="_blank" rel="noopener" class="portal portal--valor">
+        <div class="portal__cover">
+          <div class="portal__pattern" aria-hidden="true">
+            <svg viewBox="0 0 400 200" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="grad-valor" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="#c8102e"/>
+                  <stop offset="100%" stop-color="#7a0820"/>
+                </linearGradient>
+              </defs>
+              <rect width="400" height="200" fill="url(#grad-valor)"/>
+              <g opacity="0.18" stroke="white" stroke-width="1" fill="none">
+                <path d="M0,150 L60,140 L120,160 L180,120 L240,130 L300,90 L360,100 L400,80"/>
+                <path d="M0,170 L60,165 L120,175 L180,150 L240,160 L300,130 L360,140 L400,120"/>
+              </g>
+              <g opacity="0.1" fill="white">
+                <rect x="20" y="180" width="6" height="12"/>
+                <rect x="35" y="175" width="6" height="17"/>
+                <rect x="50" y="170" width="6" height="22"/>
+                <rect x="65" y="178" width="6" height="14"/>
+                <rect x="80" y="172" width="6" height="20"/>
+              </g>
+            </svg>
+          </div>
+          <div class="portal__brand portal__brand--valor">
+            <span class="portal__brand-text">Valor</span>
+            <span class="portal__brand-sub">ECONÔMICO</span>
+          </div>
+          <div class="portal__headline">
+            <span class="portal__kicker">MERCADO · ÚLTIMAS</span>
+            <span class="portal__title">Selic em 10,5% e dólar abaixo de R$ 5,20: BC sinaliza pausa</span>
+          </div>
+        </div>
+        <div class="portal__body">
+          <div class="portal__name">Valor Econômico</div>
+          <div class="portal__desc">
+            Referência absoluta em jornalismo de mercado e economia no Brasil. Cobertura
+            institucional, Banco Central, política monetária, balanços corporativos.
+            Pertence ao Grupo Globo.
+          </div>
+          <div class="portal__tags">
+            <span class="portal__tag">Jornalismo institucional</span>
+            <span class="portal__tag">Análise política</span>
+            <span class="portal__tag">Balanços</span>
+          </div>
+          <div class="portal__cta">
+            valor.globo.com <span class="portal__arrow">↗</span>
+          </div>
+        </div>
+      </a>
+
+      <!-- INFOMONEY -->
+      <a href="https://www.infomoney.com.br" target="_blank" rel="noopener" class="portal portal--info">
+        <div class="portal__cover">
+          <div class="portal__pattern" aria-hidden="true">
+            <svg viewBox="0 0 400 200" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="grad-info" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="#0066b3"/>
+                  <stop offset="100%" stop-color="#003a66"/>
+                </linearGradient>
+              </defs>
+              <rect width="400" height="200" fill="url(#grad-info)"/>
+              <g opacity="0.15" fill="white">
+                <circle cx="60"  cy="60" r="25"/>
+                <circle cx="60"  cy="60" r="40" fill="none" stroke="white" stroke-width="1.5"/>
+                <circle cx="60"  cy="60" r="55" fill="none" stroke="white" stroke-width="1"/>
+              </g>
+              <g opacity="0.18" fill="white" font-family="monospace" font-size="11">
+                <text x="200" y="40">+1.24%</text>
+                <text x="280" y="80">-0.87%</text>
+                <text x="220" y="120">+0.42%</text>
+                <text x="300" y="160">+2.05%</text>
+                <text x="190" y="180">-0.31%</text>
+              </g>
+            </svg>
+          </div>
+          <div class="portal__brand portal__brand--info">
+            <span class="portal__brand-text"><span class="portal__brand-i">i</span>nfo<strong>Money</strong></span>
+            <span class="portal__brand-sub">INVESTIMENTOS</span>
+          </div>
+          <div class="portal__headline">
+            <span class="portal__kicker">AÇÕES · DESTAQUE</span>
+            <span class="portal__title">3 ações pra ficar de olho na temporada de balanços do 1T26</span>
+          </div>
+        </div>
+        <div class="portal__body">
+          <div class="portal__name">InfoMoney</div>
+          <div class="portal__desc">
+            Maior portal de educação financeira e investimentos do Brasil. Foco em
+            investidor pessoa física, com dicas práticas, análises de ações e cobertura
+            rápida de mercado. Parte do Grupo XP.
+          </div>
+          <div class="portal__tags">
+            <span class="portal__tag">Investidor PF</span>
+            <span class="portal__tag">Educação financeira</span>
+            <span class="portal__tag">Análise técnica</span>
+          </div>
+          <div class="portal__cta">
+            infomoney.com.br <span class="portal__arrow">↗</span>
+          </div>
+        </div>
+      </a>
+
+      <!-- BLOOMBERG LÍNEA -->
+      <a href="https://www.bloomberglinea.com.br" target="_blank" rel="noopener" class="portal portal--bbg">
+        <div class="portal__cover">
+          <div class="portal__pattern" aria-hidden="true">
+            <svg viewBox="0 0 400 200" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="grad-bbg" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="#1a1a1a"/>
+                  <stop offset="100%" stop-color="#000000"/>
+                </linearGradient>
+              </defs>
+              <rect width="400" height="200" fill="url(#grad-bbg)"/>
+              <g opacity="0.25">
+                <rect x="0" y="0" width="400" height="2" fill="#fa4616"/>
+                <rect x="0" y="198" width="400" height="2" fill="#fa4616"/>
+              </g>
+              <g opacity="0.12" stroke="#fa4616" stroke-width="0.5" fill="none">
+                <line x1="0" y1="40" x2="400" y2="40"/>
+                <line x1="0" y1="80" x2="400" y2="80"/>
+                <line x1="0" y1="120" x2="400" y2="120"/>
+                <line x1="0" y1="160" x2="400" y2="160"/>
+              </g>
+              <g opacity="0.5" font-family="monospace" font-size="9" fill="#fa4616">
+                <text x="20" y="35">USDBRL  5.1839</text>
+                <text x="20" y="75">EURBRL  5.6210</text>
+                <text x="20" y="115">USDARS  967.45</text>
+                <text x="20" y="155">USDMXN   17.32</text>
+              </g>
+              <g opacity="0.5" font-family="monospace" font-size="9" fill="#5eead4" text-anchor="end">
+                <text x="380" y="35">+0.42%</text>
+                <text x="380" y="75">-0.18%</text>
+              </g>
+              <g opacity="0.5" font-family="monospace" font-size="9" fill="#f87171" text-anchor="end">
+                <text x="380" y="115">+1.24%</text>
+                <text x="380" y="155">-0.55%</text>
+              </g>
+            </svg>
+          </div>
+          <div class="portal__brand portal__brand--bbg">
+            <span class="portal__brand-bar"></span>
+            <span class="portal__brand-text">Bloomberg <em>Línea</em></span>
+            <span class="portal__brand-sub">MARKETS · BR</span>
+          </div>
+          <div class="portal__headline">
+            <span class="portal__kicker">CÂMBIO · GLOBAL</span>
+            <span class="portal__title">Fed mantém juros e dólar testa R$ 5,15 com fluxo estrangeiro forte</span>
+          </div>
+        </div>
+        <div class="portal__body">
+          <div class="portal__name">Bloomberg Línea</div>
+          <div class="portal__desc">
+            Versão brasileira do Bloomberg. Cobertura global de mercados financeiros
+            com lente local: agronegócio, commodities, dólar, juros americanos
+            e seu impacto na B3. Padrão internacional de jornalismo financeiro.
+          </div>
+          <div class="portal__tags">
+            <span class="portal__tag">Macro global</span>
+            <span class="portal__tag">Commodities</span>
+            <span class="portal__tag">Câmbio</span>
+          </div>
+          <div class="portal__cta">
+            bloomberglinea.com.br <span class="portal__arrow">↗</span>
+          </div>
+        </div>
+      </a>
+
+      <!-- MONEY TIMES -->
+      <a href="https://www.moneytimes.com.br" target="_blank" rel="noopener" class="portal portal--mt">
+        <div class="portal__cover">
+          <div class="portal__pattern" aria-hidden="true">
+            <svg viewBox="0 0 400 200" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="grad-mt" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="#1a4d2e"/>
+                  <stop offset="100%" stop-color="#0d2818"/>
+                </linearGradient>
+              </defs>
+              <rect width="400" height="200" fill="url(#grad-mt)"/>
+              <g opacity="0.2" fill="#5eead4">
+                <rect x="20" y="100" width="8" height="60"/>
+                <rect x="35" y="80"  width="8" height="80"/>
+                <rect x="50" y="90"  width="8" height="70"/>
+                <rect x="65" y="60"  width="8" height="100"/>
+                <rect x="80" y="70"  width="8" height="90"/>
+                <rect x="95" y="50"  width="8" height="110"/>
+                <rect x="110" y="40" width="8" height="120"/>
+                <rect x="125" y="55" width="8" height="105"/>
+                <rect x="140" y="35" width="8" height="125"/>
+                <rect x="155" y="45" width="8" height="115"/>
+                <rect x="170" y="25" width="8" height="135"/>
+                <rect x="185" y="40" width="8" height="120"/>
+              </g>
+              <g opacity="0.18" stroke="#5eead4" stroke-width="1.5" fill="none">
+                <path d="M20,140 L35,120 L50,125 L65,100 L80,105 L95,85 L110,75 L125,80 L140,60 L155,70 L170,50 L185,55 L200,40 L215,45 L230,30"/>
+              </g>
+              <g opacity="0.5" font-family="monospace" font-size="10" fill="#5eead4">
+                <text x="260" y="50">▲ IBOV</text>
+                <text x="260" y="65" fill="white">130.452</text>
+                <text x="260" y="100">▲ DÓLAR</text>
+                <text x="260" y="115" fill="white">5,1839</text>
+                <text x="260" y="150">▼ IFIX</text>
+                <text x="260" y="165" fill="white">3.402</text>
+              </g>
+            </svg>
+          </div>
+          <div class="portal__brand portal__brand--mt">
+            <span class="portal__brand-text">Money<strong>Times</strong></span>
+            <span class="portal__brand-sub">PREGÃO AO VIVO</span>
+          </div>
+          <div class="portal__headline">
+            <span class="portal__kicker">DAY-TRADE · AGORA</span>
+            <span class="portal__title">Ibovespa fecha em alta de 0,8%, puxado por bancos e Petrobras</span>
+          </div>
+        </div>
+        <div class="portal__body">
+          <div class="portal__name">Money Times</div>
+          <div class="portal__desc">
+            Portal de notícias rápidas focado em pregão, com cobertura ao vivo do
+            mercado, recomendações de carteira, análises técnicas e fluxo de caixa
+            de investidores. Atualização constante durante o pregão.
+          </div>
+          <div class="portal__tags">
+            <span class="portal__tag">Cobertura ao vivo</span>
+            <span class="portal__tag">Day-trade</span>
+            <span class="portal__tag">Carteiras</span>
+          </div>
+          <div class="portal__cta">
+            moneytimes.com.br <span class="portal__arrow">↗</span>
+          </div>
+        </div>
+      </a>
+
+    </div>
+
+    <!-- Outras fontes complementares -->
+    <h3 class="mkt-section-subtitle">OUTRAS FONTES RELEVANTES</h3>
+    <div class="mkt-portals__small">
+      <a href="https://www.brazilJournal.com" target="_blank" rel="noopener" class="portal-small">
+        <span class="portal-small__name">Brazil Journal</span>
+        <span class="portal-small__desc">Jornalismo de elite financeira · M&A · gestoras</span>
+      </a>
+      <a href="https://neofeed.com.br" target="_blank" rel="noopener" class="portal-small">
+        <span class="portal-small__name">NeoFeed</span>
+        <span class="portal-small__desc">Negócios · investimentos · entrevistas com gestores</span>
+      </a>
+      <a href="https://www.suno.com.br/noticias" target="_blank" rel="noopener" class="portal-small">
+        <span class="portal-small__name">Suno Notícias</span>
+        <span class="portal-small__desc">Análise fundamentalista · dividendos · long-only</span>
+      </a>
+      <a href="https://www.b3.com.br" target="_blank" rel="noopener" class="portal-small">
+        <span class="portal-small__name">B3.com.br</span>
+        <span class="portal-small__desc">Bolsa oficial · dados · regulamentos</span>
+      </a>
+      <a href="https://www.bcb.gov.br" target="_blank" rel="noopener" class="portal-small">
+        <span class="portal-small__name">Banco Central</span>
+        <span class="portal-small__desc">Selic · política monetária · BC#</span>
+      </a>
+      <a href="https://www.anbima.com.br" target="_blank" rel="noopener" class="portal-small">
+        <span class="portal-small__name">ANBIMA</span>
+        <span class="portal-small__desc">Associação · regulamentação · dados de fundos</span>
+      </a>
+    </div>
+  </section>
+
+</div><!-- /tab-mercado -->
+
+<!-- ========== TAB: HOME BROKER ========== -->
+<div class="tab-panel" id="tab-broker" role="tabpanel" hidden>
+
+  <section class="hb-hero">
+    <div class="hb-hero__content">
+      <div class="hb-hero__eyebrow">
+        <span class="dot dot--live"></span>
+        SIMULADOR DE TRADING · CARTEIRA VIRTUAL
+      </div>
+      <h1 class="hb-hero__title">
+        <span>Compre, venda,</span>
+        <span class="title-line--accent">acompanhe.</span>
+      </h1>
+      <p class="hb-hero__sub">
+        Home broker simulado com 12 ações da B3. Saldo inicial de R$ 100.000.
+        Preços oscilam em tempo real (random walk realista). Sem dinheiro real,
+        só prática.
+      </p>
+    </div>
+  </section>
+
+  <!-- KPIs do trader -->
+  <section class="hb-kpis">
+    <div class="hb-kpi">
+      <div class="hb-kpi__lbl">PATRIMÔNIO TOTAL</div>
+      <div class="hb-kpi__val" id="hb-patrimonio">R$ 100.000,00</div>
+      <div class="hb-kpi__delta" id="hb-patrimonio-delta">+R$ 0,00 · +0,00%</div>
+    </div>
+    <div class="hb-kpi">
+      <div class="hb-kpi__lbl">SALDO EM CONTA</div>
+      <div class="hb-kpi__val" id="hb-saldo">R$ 100.000,00</div>
+      <div class="hb-kpi__delta">disponível pra operar</div>
+    </div>
+    <div class="hb-kpi">
+      <div class="hb-kpi__lbl">POSIÇÕES</div>
+      <div class="hb-kpi__val" id="hb-posicoes">R$ 0,00</div>
+      <div class="hb-kpi__delta" id="hb-posicoes-qtd">0 ativos · 0 ações</div>
+    </div>
+    <div class="hb-kpi">
+      <div class="hb-kpi__lbl">P&L DO DIA</div>
+      <div class="hb-kpi__val" id="hb-pnl">R$ 0,00</div>
+      <div class="hb-kpi__delta" id="hb-pnl-pct">+0,00%</div>
+    </div>
+  </section>
+
+  <!-- Gráfico de evolução do patrimônio -->
+  <section class="hb-chart-wrap">
+    <div class="hb-chart-head">
+      <h3 class="hb-section-title">▶ EVOLUÇÃO DO PATRIMÔNIO · INTRADAY</h3>
+      <div class="hb-chart-meta" id="hb-chart-meta">aguardando dados...</div>
+    </div>
+    <div class="hb-chart" id="hb-chart">
+      <svg viewBox="0 0 800 200" preserveAspectRatio="none" id="hb-chart-svg">
+        <defs>
+          <linearGradient id="hb-chart-grad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.4"/>
+            <stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <line x1="0" y1="100" x2="800" y2="100" stroke="var(--line)" stroke-dasharray="2,4"/>
+        <path id="hb-chart-area" fill="url(#hb-chart-grad)" d=""/>
+        <path id="hb-chart-line" fill="none" stroke="var(--accent)" stroke-width="2" d=""/>
+      </svg>
+      <div class="hb-chart-empty" id="hb-chart-empty">
+        Comece a operar pra ver a evolução do seu patrimônio aqui
+      </div>
+    </div>
+  </section>
+
+  <!-- Container de confetti (sobreposto a tudo) -->
+  <div class="hb-confetti" id="hb-confetti" aria-hidden="true"></div>
+
+  <!-- Layout do home broker -->
+  <section class="hb-layout">
+
+    <!-- Coluna esquerda: tabela de cotações -->
+    <div class="hb-quotes">
+      <div class="hb-quotes__head">
+        <h3 class="hb-section-title">▶ COTAÇÕES B3 · CLIQUE PARA OPERAR</h3>
+        <button class="hb-reset" id="hb-reset" title="Resetar carteira">⟲ reset</button>
+      </div>
+      <div class="hb-quotes__table">
+        <div class="hb-quotes__h">
+          <div>ATIVO</div>
+          <div>GRÁFICO</div>
+          <div>ÚLTIMO</div>
+          <div>VAR%</div>
+          <div>VOL.</div>
+          <div></div>
+        </div>
+        <div class="hb-quotes__rows" id="hb-quotes-rows"></div>
+      </div>
+    </div>
+
+    <!-- Coluna direita: ticket de ordem (preenchido ao clicar) -->
+    <div class="hb-ticket" id="hb-ticket">
+      <div class="hb-ticket__empty" id="hb-ticket-empty">
+        <div class="hb-ticket__icon">▤</div>
+        <div class="hb-ticket__msg">
+          Selecione um ativo<br>
+          <span style="opacity:.6">na tabela ao lado</span>
+        </div>
+      </div>
+      <div class="hb-ticket__body" id="hb-ticket-body" hidden>
+        <div class="hb-ticket__head">
+          <div class="hb-ticket__name" id="hb-ticket-name">—</div>
+          <div class="hb-ticket__price" id="hb-ticket-price">R$ —</div>
+          <div class="hb-ticket__var" id="hb-ticket-var">+0,00%</div>
+        </div>
+        <div class="hb-ticket__book">
+          <div class="hb-book">
+            <div class="hb-book__lbl">VENDA</div>
+            <div class="hb-book__rows" id="hb-book-sell"></div>
+          </div>
+          <div class="hb-book">
+            <div class="hb-book__lbl">COMPRA</div>
+            <div class="hb-book__rows" id="hb-book-buy"></div>
+          </div>
+        </div>
+        <div class="hb-ticket__form">
+          <label class="hb-field">
+            <span class="hb-field__lbl">QUANTIDADE</span>
+            <input type="number" id="hb-qty" class="hb-input" value="100" step="100" min="100">
+          </label>
+          <div class="hb-field-row">
+            <div class="hb-field-row__lbl">FINANCEIRO</div>
+            <div class="hb-field-row__val" id="hb-financeiro">R$ —</div>
+          </div>
+          <div class="hb-actions">
+            <button class="hb-btn hb-btn--buy" id="hb-buy">COMPRAR ▲</button>
+            <button class="hb-btn hb-btn--sell" id="hb-sell">VENDER ▼</button>
+          </div>
+          <div class="hb-position-info" id="hb-position-info" hidden>
+            Você tem <strong id="hb-pos-qtd">0</strong> ações deste ativo ·
+            PM <strong id="hb-pos-pm">R$ 0,00</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Carteira -->
+  <section class="hb-portfolio">
+    <h3 class="hb-section-title">▶ MINHA CARTEIRA</h3>
+    <div class="hb-port-cards" id="hb-port-cards">
+      <div class="hb-port-empty">Nenhuma posição. Compre algo na tabela acima pra começar.</div>
+    </div>
+  </section>
+
+  <!-- Histórico de ordens -->
+  <section class="hb-history">
+    <h3 class="hb-section-title">▶ HISTÓRICO DE ORDENS</h3>
+    <div class="hb-hist-table">
+      <div class="hb-hist-h">
+        <div>HORA</div>
+        <div>ATIVO</div>
+        <div>OPERAÇÃO</div>
+        <div>QTD</div>
+        <div>PREÇO</div>
+        <div>FINANCEIRO</div>
+      </div>
+      <div class="hb-hist-rows" id="hb-hist-rows">
+        <div class="hb-hist-empty">Nenhuma ordem executada ainda.</div>
+      </div>
+    </div>
+  </section>
+
+</div><!-- /tab-broker -->
+<!-- ========== SOBRE — VERSÃO COMPLETA ========== -->
+<section class="about-full" id="sobre">
+  <div class="about-full__head">
+    <div class="section__num">AUTOR</div>
+    <div class="section__kind">QUEM FEZ E POR QUÊ</div>
+  </div>
+
+  <div class="about-full__hero">
+    <div class="about-full__avatar-big">RG</div>
+    <div class="about-full__intro">
+      <h2 class="about-full__name">Raphael Monteiro<br>Guimarães Gonçalves</h2>
+      <div class="about-full__sub">Estudante de Economia · IBMEC · Rio de Janeiro</div>
+      <div class="about-full__contacts">
+        <a href="https://linkedin.com/in/raphael-mgg" target="_blank" rel="noopener" class="about-contact">
+          <span class="about-contact__icon">in</span>
+          <span class="about-contact__lbl">LinkedIn</span>
+          <span class="about-contact__val">/raphael-mgg</span>
+        </a>
+        <a href="mailto:raphaelguigon@hotmail.com" class="about-contact">
+          <span class="about-contact__icon">@</span>
+          <span class="about-contact__lbl">E-mail</span>
+          <span class="about-contact__val">raphaelguigon@hotmail.com</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="about-full__body">
+    <p class="about-full__lead">
+      Comecei a estudar mercado financeiro como muita gente começa: lendo sobre ações, fundos,
+      juros — sem entender exatamente como o sistema funciona por dentro.
+    </p>
+
+    <p>
+      Quando passei a olhar com mais atenção o caminho de entrada no mercado, percebi um padrão:
+      a maior parte dos estagiários e analistas júnior entra pela porta do <strong>backoffice</strong>.
+      É a área que ensina o "encanamento" do mercado — boletas, liquidação, custódia, conciliação,
+      fechamento de cota. Mas, ao mesmo tempo, é a área menos explicada nos cursos, nos livros,
+      nos vídeos. Você só entende quando já está lá dentro.
+    </p>
+
+    <p>
+      Construí este site pra reduzir essa distância. Cada página representa uma hora real do dia
+      de quem trabalha na operação de uma gestora. Cada ferramenta interativa simula uma rotina
+      concreta — importar boletas de corretoras, conciliar posições com a custódia, marcar a mercado,
+      calcular cota, montar uma carteira no home broker. O código por trás de tudo está aberto:
+      <strong>VBA, Python, DAX, JavaScript</strong>.
+    </p>
+
+    <p>
+      A finalidade é dupla: <strong>didática</strong>, pra quem está começando ter um mapa antes
+      de entrar; e <strong>interativa</strong>, porque ler sobre o trabalho não substitui experimentar
+      o trabalho. Aprende-se mais errando uma boleta simulada do que lendo dez parágrafos sobre o
+      conceito.
+    </p>
+
+    <div class="about-full__highlight">
+      <div class="about-full__highlight-h">SOBRE O USO DE IA NA CONSTRUÇÃO</div>
+      <p>
+        Este site foi desenvolvido em parceria com o <strong>Claude</strong>, modelo de IA da
+        Anthropic. Eu trouxe a tese, o domínio do negócio (operação de gestora, fluxos de
+        liquidação, regulação CVM/ANBIMA), as decisões editoriais e a curadoria do que entra
+        e do que fica de fora. O Claude ajudou na implementação técnica — código VBA, Python,
+        DAX, HTML, CSS, JavaScript — e na estruturação visual.
+      </p>
+      <p>
+        Faço questão de citar isso porque acredito que o futuro do trabalho passa por essa
+        colaboração. IA não substitui quem entende do problema; <strong>multiplica</strong>
+        a capacidade de quem sabe direcionar a ferramenta. Em 2026, saber operar bem com IA
+        é tão importante quanto saber Excel foi nos anos 2000. Este projeto também é minha
+        forma de demonstrar essa fluência na prática.
+      </p>
+    </div>
+
+    <p class="about-full__close">
+      Se você é estudante e está nesse caminho, espero que ajude. Se já é da área e encontrou
+      alguma imprecisão, me avise — o material melhora com feedback. E se você é recrutador de
+      gestora, este site é minha forma de mostrar, em poucos minutos, como penso.
+    </p>
+
+    <div class="about-full__sign">
+      <span class="about-full__sign-line"></span>
+      <span class="about-full__sign-name">— Raphael, Rio de Janeiro · 2026</span>
+    </div>
+  </div>
+</section>
+
+<!-- ========== FOOTER ========== -->
+<footer class="footer">
+  <div class="footer__col">
+    <div class="footer__brand">[BO.OPS]</div>
+    <div class="footer__tag">Um dia na mesa de liquidação · v1.0 · 2026</div>
+  </div>
+  <div class="footer__col">
+    <div class="footer__title">CONTEÚDO</div>
+    <a href="#abertura">Timeline do dia</a>
+    <a href="#fluxos">Referência B3/Selic/SPB</a>
+    <a href="#stack">Stack técnico</a>
+    <a href="#download">Download</a>
+  </div>
+  <div class="footer__col">
+    <div class="footer__title">DISCLAIMER</div>
+    <p class="footer__small">
+      Material educacional. Dados, fundos, corretoras e operações são sintéticos.
+      Não constitui recomendação de investimento. Verifique sempre a regulação vigente.
+    </p>
+  </div>
+</footer>
+
+</main>
+
+<script src="script.js"></script>
+</body>
+</html>
