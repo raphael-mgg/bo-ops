@@ -1,5 +1,5 @@
 {
-  "_instrucoes": "Edite os eventos da semana abaixo. Salve o arquivo e o site lê automaticamente. Bandeiras: 'br' = Brasil, 'us' = EUA, 'eu' = Europa, 'cn' = China.",
+  "_instrucoes": "Edite os eventos abaixo; o site lê automaticamente. As DATAS são calculadas pelo site a partir da semana corrente (pelo nome do dia: SEGUNDA-FEIRA a SEXTA-FEIRA) — os campos 'data' e 'semana_de' são só fallback. Bandeiras: 'br' = Brasil, 'us' = EUA, 'eu' = Europa, 'cn' = China.",
   "semana_de": "04/05/2026 a 08/05/2026",
   "ultima_atualizacao": "2026-05-04",
   "dias": [

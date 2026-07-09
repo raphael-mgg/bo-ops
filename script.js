@@ -2020,13 +2020,34 @@
       return;
     }
 
-    if (week) week.textContent = 'Semana de ' + (agenda.semana_de || '');
+    // Datas calculadas a partir da semana corrente — o JSON define só os
+    // eventos por dia da semana; assim a agenda nunca mostra semana passada
+    const hoje = new Date();
+    const segunda = new Date(hoje);
+    segunda.setDate(hoje.getDate() - ((hoje.getDay() + 6) % 7)); // segunda da semana atual
+    const sexta = new Date(segunda);
+    sexta.setDate(segunda.getDate() + 4);
+    const fmtDia = d => String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
+    const fmtFull = d => fmtDia(d) + '/' + d.getFullYear();
+    const offsetSemana = {
+      'SEGUNDA-FEIRA': 0, 'TERÇA-FEIRA': 1, 'QUARTA-FEIRA': 2,
+      'QUINTA-FEIRA': 3, 'SEXTA-FEIRA': 4,
+    };
+    const dataDoDia = d => {
+      const off = offsetSemana[(d.dia || '').toUpperCase()];
+      if (off === undefined) return d.data; // dia desconhecido: usa a data do JSON
+      const dt = new Date(segunda);
+      dt.setDate(segunda.getDate() + off);
+      return fmtDia(dt);
+    };
+
+    if (week) week.textContent = 'Semana de ' + fmtFull(segunda) + ' a ' + fmtFull(sexta);
 
     grid.innerHTML = agenda.dias.map(d => `
       <div class="cnn-day">
         <div class="cnn-day__head">
           <div class="cnn-day__name">${d.dia}</div>
-          <div class="cnn-day__date">(${d.data})</div>
+          <div class="cnn-day__date">(${dataDoDia(d)})</div>
         </div>
         ${d.eventos.map(e => `
           <div class="cnn-event">
