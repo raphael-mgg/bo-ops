@@ -18,7 +18,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<!-- ?v= força navegadores a buscar a versão nova quando o site é atualizado -->
+<link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
 
@@ -50,6 +51,14 @@
       <a href="#mtm" class="nav-link"><span class="nav-time">15:00</span>Marcação a mercado</a>
       <a href="#bi" class="nav-link"><span class="nav-time">17:00</span>Power BI / Cota</a>
       <a href="#fechamento" class="nav-link"><span class="nav-time">18:00</span>Fechamento</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-title">○ DATA·OPS</div>
+      <a href="#dataops" class="nav-link"><span class="nav-time">07:30</span>A mesa de dados</a>
+      <a href="#dataops-etl" class="nav-link"><span class="nav-time">08:00</span>ETL — coleta e carga</a>
+      <a href="#dataops-conferencia" class="nav-link"><span class="nav-time">09:00</span>Conferência diária</a>
+      <a href="#dataops-motor" class="nav-link"><span class="nav-time">10:30</span>Motor de cálculo</a>
+      <a href="#dataops-dash" class="nav-link"><span class="nav-time">11:00</span>Dashboard da mesa</a>
     </div>
     <div class="nav-section">
       <div class="nav-title">○ REFERÊNCIA</div>
@@ -92,6 +101,11 @@
     <span class="toptab__icon">▲</span>
     <span class="toptab__name">Home Broker</span>
     <span class="toptab__sub">Simulador · trading</span>
+  </button>
+  <button class="toptab" data-tab="dataops" role="tab" aria-selected="false">
+    <span class="toptab__icon">◈</span>
+    <span class="toptab__name">DATA·OPS</span>
+    <span class="toptab__sub">Mesa de dados · ETL</span>
   </button>
 </nav>
 
@@ -2236,6 +2250,437 @@ python scripts/backoffice_alpha.py
   </section>
 
 </div><!-- /tab-broker -->
+
+<!-- ========== TAB: DATA·OPS — A MESA DE DADOS ========== -->
+<div class="tab-panel" id="tab-dataops" role="tabpanel" hidden>
+
+<!-- ========== 07:30 INTRO ========== -->
+<section class="section section--intro" id="dataops">
+  <div class="section__head">
+    <div class="section__num">00</div>
+    <div class="section__time">07:30</div>
+    <div class="section__kind">DATA·OPS · A MESA DE DADOS</div>
+  </div>
+  <h2 class="section__title">Antes de a mesa abrir, os dados já trabalharam.</h2>
+
+  <div class="prose">
+    <p>
+      Enquanto o backoffice cuida do <em>fluxo das operações</em>, o time de dados cuida do
+      <em>fluxo da informação</em>: coleta preços, taxas e carteiras de várias fontes, valida a
+      integridade de tudo e entrega números prontos pra decisão. A missão cabe numa frase:
+      <strong>nenhum número chega à mesa sem ser coletado, tratado e conferido.</strong>
+      Um preço errado que passa despercebido vira cota errada, enquadramento errado, decisão errada.
+    </p>
+    <p>
+      O dia da mesa de dados da Alpha Capital segue o mesmo formato do Diário de Operações:
+      uma linha do tempo, um problema concreto por hora, e a ferramenta certa pra resolver.
+    </p>
+  </div>
+
+  <div class="demo">
+    <div class="demo__lbl">O PIPELINE · DA FONTE AO DASHBOARD</div>
+    <div class="dops-flow">
+      <div class="dops-flow__box dops-flow__box--src">
+        <div class="dops-flow__h">FONTES</div>
+        <div class="dops-flow__b">ANBIMA · B3<br>Administrador<br>feeds de mercado</div>
+      </div>
+      <div class="dops-flow__arrow" aria-hidden="true">→</div>
+      <div class="dops-flow__box">
+        <div class="dops-flow__h">ETL</div>
+        <div class="dops-flow__b">extrai · trata<br>padroniza</div>
+      </div>
+      <div class="dops-flow__arrow" aria-hidden="true">→</div>
+      <div class="dops-flow__box">
+        <div class="dops-flow__h">BANCO SQL</div>
+        <div class="dops-flow__b">preços · taxas<br>carteiras · cotas</div>
+      </div>
+      <div class="dops-flow__arrow" aria-hidden="true">→</div>
+      <div class="dops-flow__box dops-flow__box--check">
+        <div class="dops-flow__h">VALIDAÇÕES</div>
+        <div class="dops-flow__b">completude<br>sanidade · batimento</div>
+      </div>
+      <div class="dops-flow__arrow" aria-hidden="true">→</div>
+      <div class="dops-flow__box">
+        <div class="dops-flow__h">MOTOR DE CÁLCULO</div>
+        <div class="dops-flow__b">retornos · excesso<br>volatilidade</div>
+      </div>
+      <div class="dops-flow__arrow" aria-hidden="true">→</div>
+      <div class="dops-flow__box dops-flow__box--dst">
+        <div class="dops-flow__h">DASHBOARDS</div>
+        <div class="dops-flow__b">a mesa decide<br>com dado íntegro</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 08:00 ETL ========== -->
+<section class="section" id="dataops-etl">
+  <div class="section__head">
+    <div class="section__num">01</div>
+    <div class="section__time">08:00</div>
+    <div class="section__kind">ETL · PYTHON</div>
+  </div>
+  <h2 class="section__title">O arquivo chegou sujo. Como sempre.</h2>
+
+  <div class="problem">
+    <div class="problem__lbl">A DOR REAL</div>
+    <p>
+      Todo dia, antes das 8h, chegam os arquivos: preços da B3, taxas da ANBIMA, indexadores
+      (CDI, IMA-B, Ibovespa) e as carteiras que o administrador fiduciário fecha. Nenhum vem
+      pronto: data em formato brasileiro, número com vírgula decimal, campo vazio no meio.
+      <strong>ETL</strong> — <em>Extract, Transform, Load</em> — é o nome do processo que
+      extrai o arquivo cru, trata cada um desses problemas e carrega o resultado padronizado
+      no banco. Sempre nessa ordem.
+    </p>
+  </div>
+
+  <div class="layouts">
+    <div class="layout">
+      <div class="layout__head"><span class="badge">CRU</span> como o arquivo chega</div>
+<pre class="layout__sample">DT_PREGAO;TICKER;PRECO_ULT
+28/04/2026;PETR4;38,52
+28/04/2026;TAEE11;345,10
+28/04/2026;WEGE3;</pre>
+    </div>
+    <div class="layout">
+      <div class="layout__head"><span class="badge">TRATADO</span> como entra no banco</div>
+<pre class="layout__sample">data_pregao  ticker   preco_fech
+2026-04-28   PETR4    38.52
+2026-04-28   TAEE11   345.10   ← passa no ETL; a CONFERÊNCIA pega
+2026-04-28   WEGE3    (log de pendências — campo vazio)</pre>
+    </div>
+  </div>
+
+  <div class="solution">
+    <div class="solution__lbl">A SOLUÇÃO · SCRIPT PYTHON</div>
+    <p>
+      Repare no detalhe: o ETL <strong>não corrige</strong> o preço estranho da TAEE11 —
+      tratar formato é papel do ETL; julgar se o número faz sentido é papel da
+      <a href="#dataops-conferencia">conferência das 9h</a>. Separar as duas coisas evita
+      "correções" silenciosas que escondem erro de fonte.
+    </p>
+  </div>
+
+  <div class="code-block">
+    <div class="code-head">
+      <span class="code-file">etl_precos.py</span>
+      <span class="code-lang">PYTHON · pandas</span>
+      <button class="copy-btn" data-target="code-py-etl">copiar</button>
+    </div>
+<pre class="code-body" id="code-py-etl"><span class="c-com">"""
+ETL diário — preços B3.
+O arquivo chega 'sujo': data BR, decimal com vírgula, campo vazio.
+Extract → Transform → Load, sempre nessa ordem.
+"""</span>
+<span class="c-key">import</span> pandas <span class="c-key">as</span> pd
+<span class="c-key">from</span> sqlalchemy <span class="c-key">import</span> create_engine
+
+engine = create_engine(<span class="c-str">"sqlite:///alpha_dados.db"</span>)
+
+<span class="c-com"># ---- EXTRACT: lê tudo como texto cru (nenhuma conversão automática) ----</span>
+df = pd.read_csv(<span class="c-str">"entrada/precos_b3_20260428.csv"</span>, sep=<span class="c-str">";"</span>, dtype=str)
+
+<span class="c-com"># ---- TRANSFORM: cada problema do arquivo tem tratamento explícito ----</span>
+<span class="c-com"># 1) data em formato BR (28/04/2026) → ISO (2026-04-28)</span>
+df[<span class="c-str">"data_pregao"</span>] = pd.to_datetime(df[<span class="c-str">"DT_PREGAO"</span>], format=<span class="c-str">"%d/%m/%Y"</span>).dt.date
+
+<span class="c-com"># 2) número BR ("1.234,56") → float (1234.56)</span>
+df[<span class="c-str">"preco_fech"</span>] = pd.to_numeric(
+    df[<span class="c-str">"PRECO_ULT"</span>].str.replace(<span class="c-str">"."</span>, <span class="c-str">""</span>, regex=<span class="c-key">False</span>)
+                   .str.replace(<span class="c-str">","</span>, <span class="c-str">"."</span>, regex=<span class="c-key">False</span>),
+    errors=<span class="c-str">"coerce"</span>)  <span class="c-com"># campo vazio vira NaN — tratado abaixo</span>
+
+<span class="c-com"># 3) campo vazio → NÃO inventa preço: separa, registra e segue</span>
+faltantes = df[df[<span class="c-str">"preco_fech"</span>].isna()]
+<span class="c-key">if</span> len(faltantes):
+    faltantes.to_csv(<span class="c-str">"log/pendencias_precos.csv"</span>, index=<span class="c-key">False</span>)
+    print(<span class="c-str">f"[aviso] {len(faltantes)} ativo(s) sem preço — vai pra conferência"</span>)
+df = df.dropna(subset=[<span class="c-str">"preco_fech"</span>])
+
+<span class="c-com"># ---- LOAD: grava a carga do dia na tabela de preços ----</span>
+df[[<span class="c-str">"data_pregao"</span>, <span class="c-str">"TICKER"</span>, <span class="c-str">"preco_fech"</span>]] \
+  .rename(columns={<span class="c-str">"TICKER"</span>: <span class="c-str">"ticker"</span>}) \
+  .to_sql(<span class="c-str">"fato_preco"</span>, engine, if_exists=<span class="c-str">"append"</span>, index=<span class="c-key">False</span>)
+
+print(<span class="c-str">f"[ok] {len(df)} preços carregados em fato_preco"</span>)</pre>
+  </div>
+
+  <!-- ===== TOOL: Carga do dia ===== -->
+  <div class="tool" id="tool-dops-etl">
+    <div class="tool__head">
+      <span class="tool__badge">⚙ FERRAMENTA INTERATIVA</span>
+      <span class="tool__name">Carga do dia — as 4 fontes chegando</span>
+      <button class="tool__reset" id="dops-etl-reset" title="Resetar carga" hidden>⟲ reset</button>
+    </div>
+    <div class="tool__body">
+      <p class="tool__intro">
+        Clique e acompanhe o pipeline processar as 4 fontes da manhã, na ordem em que chegam.
+        O log é o mesmo que o time de dados lê no terminal — linhas carregadas por tabela,
+        avisos de pendência incluídos.
+      </p>
+
+      <button id="dops-etl-run" class="tool__btn">▶ Rodar carga do dia</button>
+
+      <div class="dops-progress" id="dops-etl-progress" hidden>
+        <div class="dops-progress__track"><div class="dops-progress__fill" id="dops-etl-fill"></div></div>
+        <div class="dops-progress__lbl" id="dops-etl-pct">0%</div>
+      </div>
+
+      <pre class="terminal-output dops-log" id="dops-etl-log" hidden></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 09:00 CONFERÊNCIA ========== -->
+<section class="section" id="dataops-conferencia">
+  <div class="section__head">
+    <div class="section__num">02</div>
+    <div class="section__time">09:00</div>
+    <div class="section__kind">CONFERÊNCIA DIÁRIA · VALIDAÇÃO</div>
+  </div>
+  <h2 class="section__title">Carregar é fácil. Confiar é outra história.</h2>
+
+  <div class="problem">
+    <div class="problem__lbl">A PARTE MAIS IMPORTANTE DO DIA</div>
+    <p>
+      Dado carregado não é dado confiável. Antes de liberar qualquer número pra mesa, rodam
+      as três checagens clássicas de integridade — e enquanto houver alerta aberto,
+      <strong>nada sai</strong>. É a versão de dados do "tudo bate" do backoffice.
+    </p>
+  </div>
+
+  <div class="errors">
+    <div class="err">
+      <div class="err__h">a) COMPLETUDE</div>
+      <div class="err__b">Todo fundo tem cota hoje? Todo ativo em carteira tem preço? Se falta linha, algo não chegou — e ninguém percebe até precisar.</div>
+    </div>
+    <div class="err">
+      <div class="err__h">b) SANIDADE</div>
+      <div class="err__b">Algum preço variou mais de ±10% contra ontem? Outlier assim quase sempre é erro de feed — vírgula deslocada, fator de ajuste — e não mercado.</div>
+    </div>
+    <div class="err">
+      <div class="err__h">c) BATIMENTO</div>
+      <div class="err__b">A cota oficial do administrador bate com o cálculo interno ("shadow NAV")? Tolerância: 1 basis point (0,01%). Acima disso, investiga.</div>
+    </div>
+  </div>
+
+  <!-- ===== TOOL: Conferência ===== -->
+  <div class="tool" id="tool-dops-conf">
+    <div class="tool__head">
+      <span class="tool__badge">⚙ FERRAMENTA INTERATIVA</span>
+      <span class="tool__name">Conferência diária — resolva os alertas</span>
+      <button class="tool__reset" id="dops-conf-reset" title="Resetar conferência" hidden>⟲ reset</button>
+    </div>
+    <div class="tool__body">
+      <p class="tool__intro">
+        Rode a conferência sobre a carga do dia. Três problemas foram plantados de propósito —
+        clique em cada alerta pra ver a causa provável e a ação, e marque como resolvido.
+        Só então os dados são liberados pra mesa.
+      </p>
+
+      <div class="dops-status" id="dops-status" data-state="idle">
+        <span class="dops-status__dot"></span>
+        <span class="dops-status__text" id="dops-status-text">AGUARDANDO CONFERÊNCIA</span>
+      </div>
+
+      <button id="dops-conf-run" class="tool__btn">▶ Rodar conferência</button>
+
+      <div class="dops-alerts" id="dops-alerts" hidden></div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 10:30 MOTOR DE CÁLCULO ========== -->
+<section class="section" id="dataops-motor">
+  <div class="section__head">
+    <div class="section__num">03</div>
+    <div class="section__time">10:30</div>
+    <div class="section__kind">MOTOR DE CÁLCULO · MÉTRICAS</div>
+  </div>
+  <h2 class="section__title">Dos dados brutos aos números que a mesa fala.</h2>
+
+  <div class="problem">
+    <div class="problem__lbl">A DOR REAL</div>
+    <p>
+      Com dados íntegros no banco, o motor calcula as métricas que todo mundo cita em reunião.
+      Parecem triviais — até alguém <em>somar</em> retornos que deviam ser <em>multiplicados</em>
+      e apresentar rentabilidade errada pro comitê. As quatro contas de todo dia:
+    </p>
+  </div>
+
+  <table class="ref-table">
+    <thead>
+      <tr><th>Métrica</th><th>Fórmula</th><th>Exemplo numérico</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Retorno da cota</td><td>cota final ÷ cota inicial − 1</td><td>1,853722 ÷ 1,850000 − 1 = <strong>+0,2012%</strong></td></tr>
+      <tr><td>Acumulação de retornos</td><td>multiplicam, não somam: (1+r₁)×(1+r₂) − 1</td><td>1,01 × 1,02 − 1 = <strong>+3,02%</strong> (e não 3,00%)</td></tr>
+      <tr><td>Excesso vs. benchmark</td><td>retorno do fundo − retorno do benchmark</td><td>+1,10% − CDI +0,89% = <strong>+21 bps</strong></td></tr>
+      <tr><td>Volatilidade anualizada</td><td>desvio-padrão dos retornos diários × √252</td><td>0,45% a.d. × √252 ≈ <strong>7,14% a.a.</strong></td></tr>
+    </tbody>
+  </table>
+
+  <div class="prose">
+    <p>
+      O benchmark certo depende do mandato: <strong>CDI</strong> pra pós-fixado e crédito,
+      <strong>IMA-B 5</strong> pra inflação curta, <strong>Ibovespa</strong> pra ações.
+      Comparar fundo de ações com CDI num mês de bolsa forte é o jeito mais rápido de
+      chegar a uma conclusão errada com números certos.
+    </p>
+  </div>
+
+  <!-- ===== TOOL: Calculadora ===== -->
+  <div class="tool" id="tool-dops-calc">
+    <div class="tool__head">
+      <span class="tool__badge">⚙ FERRAMENTA INTERATIVA</span>
+      <span class="tool__name">Calculadora — fundo x benchmark</span>
+    </div>
+    <div class="tool__body">
+      <p class="tool__intro">
+        Digite a cota inicial, a cota final e o retorno do benchmark no período.
+        A calculadora devolve o retorno do fundo, o excesso e o veredito.
+        Aceita vírgula ou ponto decimal.
+      </p>
+
+      <div class="tool__form">
+        <label class="tool__field">
+          <span class="tool__lbl">Cota inicial</span>
+          <input type="text" id="dops-calc-ini" class="tool__input" inputmode="decimal" placeholder="ex.: 1,850000">
+        </label>
+        <label class="tool__field">
+          <span class="tool__lbl">Cota final</span>
+          <input type="text" id="dops-calc-fim" class="tool__input" inputmode="decimal" placeholder="ex.: 1,872400">
+        </label>
+        <label class="tool__field">
+          <span class="tool__lbl">Benchmark no período (%)</span>
+          <input type="text" id="dops-calc-bmk" class="tool__input" inputmode="decimal" placeholder="ex.: 0,89">
+        </label>
+        <button id="dops-calc-btn" class="tool__btn">Calcular →</button>
+      </div>
+
+      <div class="tool__result" id="dops-calc-result" hidden>
+        <div class="dops-res">
+          <div class="dops-res__block">
+            <div class="dops-res__lbl">RETORNO DO FUNDO</div>
+            <div class="dops-res__val" id="dops-calc-ret">—</div>
+          </div>
+          <div class="dops-res__block">
+            <div class="dops-res__lbl">BENCHMARK</div>
+            <div class="dops-res__val" id="dops-calc-bmk-out">—</div>
+          </div>
+          <div class="dops-res__block dops-res__block--accent">
+            <div class="dops-res__lbl">EXCESSO</div>
+            <div class="dops-res__val" id="dops-calc-exc">—</div>
+          </div>
+        </div>
+        <div class="dops-verdict" id="dops-calc-verdict"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 11:00 DASHBOARD ========== -->
+<section class="section" id="dataops-dash">
+  <div class="section__head">
+    <div class="section__num">04</div>
+    <div class="section__time">11:00</div>
+    <div class="section__kind">DASHBOARD · A ENTREGA</div>
+  </div>
+  <h2 class="section__title">O que a mesa abre de manhã.</h2>
+
+  <div class="prose">
+    <p>
+      Fim do circuito: <strong>é isso que a mesa abre de manhã</strong> — informação conferida,
+      comparável e visual, no lugar de dez planilhas. Os cards de status refletem o que você
+      fez nas etapas anteriores: rode a <a href="#dataops-etl">carga</a> e a
+      <a href="#dataops-conferencia">conferência</a> e veja o painel mudar.
+    </p>
+  </div>
+
+  <div class="demo">
+    <div class="demo__lbl">DEMONSTRAÇÃO · PAINEL DA MESA (DADOS SIMULADOS)</div>
+    <div class="bi-mockup">
+      <div class="bi-head">
+        <div class="bi-title">ALPHA CAPITAL · MESA DE DADOS</div>
+        <div class="bi-date">D0 · 28/04/2026</div>
+      </div>
+      <div class="bi-kpis">
+        <div class="bi-kpi">
+          <div class="bi-kpi__lbl">CARGAS DO DIA</div>
+          <div class="bi-kpi__val" id="dops-kpi-cargas">0/4</div>
+          <div class="bi-kpi__delta" id="dops-kpi-cargas-sub">aguardando ETL das 08h</div>
+        </div>
+        <div class="bi-kpi">
+          <div class="bi-kpi__lbl">ALERTAS ABERTOS</div>
+          <div class="bi-kpi__val" id="dops-kpi-alertas">—</div>
+          <div class="bi-kpi__delta" id="dops-kpi-alertas-sub">conferência não rodada</div>
+        </div>
+        <div class="bi-kpi">
+          <div class="bi-kpi__lbl">COTA CONFERIDA</div>
+          <div class="bi-kpi__val" id="dops-kpi-cota">pendente</div>
+          <div class="bi-kpi__delta" id="dops-kpi-cota-sub">batimento vs administrador</div>
+        </div>
+      </div>
+      <div class="bi-row">
+        <div class="bi-card bi-card--line bi-card--full">
+          <div class="bi-card__title">COTA NORMALIZADA · FIA DIVIDENDOS × IBOVESPA · 60 PREGÕES <span class="dops-chart-legend"><span class="dops-chart-legend__fund">— fundo</span> <span class="dops-chart-legend__bmk">– – benchmark</span></span></div>
+          <svg viewBox="0 0 600 160" class="bi-svg" preserveAspectRatio="none" id="dops-chart-svg">
+            <defs>
+              <linearGradient id="dops-ga" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.3"/>
+                <stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <path id="dops-chart-bmk" fill="none" stroke="var(--fg-3)" stroke-width="1.5" stroke-dasharray="4,4" d=""/>
+            <path id="dops-chart-fund-area" fill="url(#dops-ga)" d=""/>
+            <path id="dops-chart-fund" fill="none" stroke="var(--accent)" stroke-width="2" d=""/>
+          </svg>
+        </div>
+      </div>
+      <div class="bi-row">
+        <div class="bi-card bi-card--full">
+          <div class="bi-card__title">RENTABILIDADE × BENCHMARK · MÊS E ANO</div>
+          <div class="bi-tab bi-tab--dops">
+            <div class="bi-tab__h"><div>FUNDO</div><div>BENCHMARK</div><div>FUNDO MÊS</div><div>BMK MÊS</div><div>FUNDO ANO</div><div>BMK ANO</div></div>
+            <div id="dops-dash-rows"><!-- preenchido por JS --></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== POR QUE ISSO IMPORTA ========== -->
+<section class="section section--ref" id="dataops-fim">
+  <div class="section__head">
+    <div class="section__num">FIM</div>
+    <div class="section__kind">POR QUE ISSO IMPORTA</div>
+  </div>
+  <h2 class="section__title">Planilha manual não escala. Pipeline sim.</h2>
+
+  <div class="prose">
+    <p>
+      Substituir planilhas manuais por pipelines estruturados não é estética: <strong>reduz erro
+      operacional</strong> (cada tratamento é explícito e testável), <strong>libera tempo</strong>
+      (a carga que tomava a manhã roda sozinha antes das 8h) e garante que o gestor decide com
+      <strong>dado íntegro</strong> — coletado, tratado e conferido. A mesa de dados e o backoffice
+      são as duas engrenagens da mesma máquina: uma garante que a operação bate, a outra que a
+      informação bate.
+    </p>
+    <p>
+      As consultas que o time de dados roda todo dia (completude por fundo, última data por tabela,
+      batimento de cota) estão em <code>sql/relatorios_dataops.sql</code> no repositório do projeto.
+    </p>
+  </div>
+
+  <div class="hero__cta">
+    <a href="#abertura" class="cta cta--primary" data-tab-link="diario">Ver a outra engrenagem: do trade à cota →</a>
+    <a href="https://github.com/raphael-mgg/bo-ops/tree/main/sql" class="cta cta--ghost" target="_blank" rel="noopener">Queries da mesa de dados ↗</a>
+  </div>
+</section>
+
+</div><!-- /tab-dataops -->
+
 <!-- ========== SOBRE — VERSÃO COMPLETA ========== -->
 <section class="about-full" id="sobre">
   <div class="about-full__head">
@@ -2332,6 +2777,7 @@ python scripts/backoffice_alpha.py
   <div class="footer__col">
     <div class="footer__title">CONTEÚDO</div>
     <a href="#abertura">Timeline do dia</a>
+    <a href="#dataops">DATA·OPS — mesa de dados</a>
     <a href="#fluxos">Referência B3/Selic/SPB</a>
     <a href="#stack">Stack técnico</a>
     <a href="#download">Download</a>
@@ -2347,6 +2793,6 @@ python scripts/backoffice_alpha.py
 
 </main>
 
-<script src="script.js"></script>
+<script src="script.js?v=2"></script>
 </body>
 </html>

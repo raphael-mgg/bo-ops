@@ -13,8 +13,9 @@ Camada relacional do projeto BO·OPS. Modela o dia a dia operacional de uma gest
 | `schema.sql` | ~250 | DDL: tabelas, FKs, índices, views, constraints |
 | `seed.sql` | ~260 | Dados sintéticos coerentes (5 fundos, 15 ativos, ~30 boletas, snapshots de PL) |
 | `relatorios.sql` | ~325 | 12 queries reais de backoffice/middle, com explicação do "porquê" |
+| `relatorios_dataops.sql` | ~100 | 3 consultas diárias da mesa de dados (completude, atualidade, batimento de cota) — companheiras da aba DATA·OPS do site |
 
-Total: **~840 linhas de SQL** validadas em SQLite 3.45.
+Total: **~940 linhas de SQL** validadas em SQLite 3.45.
 
 ---
 

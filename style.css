@@ -5365,3 +5365,274 @@ body::before {
   box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
   animation: pulse-live-cnn 1.6s infinite;
 }
+
+/* ============================================================ */
+/* DATA·OPS — a mesa de dados                                    */
+/* Componentes novos usam prefixo dops-; o resto reaproveita     */
+/* section/tool/code-block/bi-mockup etc. já existentes.         */
+/* ============================================================ */
+
+/* links dentro de texto corrido (o site não tinha nenhum antes da DATA·OPS) */
+.prose a,
+.solution a,
+.tool__intro a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: rgba(212, 160, 23, 0.4);
+  text-underline-offset: 3px;
+}
+.prose a:hover,
+.solution a:hover,
+.tool__intro a:hover { text-decoration-color: var(--accent); }
+
+/* ------------------- FLUXO (fontes → dashboards) ------------ */
+.dops-flow {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.dops-flow__box {
+  flex: 1 1 120px;
+  min-width: 110px;
+  background: var(--bg-card);
+  border: 1px solid var(--line-2);
+  border-top: 2px solid var(--fg-3);
+  padding: 12px 10px;
+  text-align: center;
+}
+.dops-flow__box--src  { border-top-color: var(--fg-2); }
+.dops-flow__box--check{ border-top-color: var(--red); }
+.dops-flow__box--dst  { border-top-color: var(--accent); }
+.dops-flow__h {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--fg);
+  margin-bottom: 6px;
+}
+.dops-flow__b {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--fg-2);
+}
+.dops-flow__arrow {
+  align-self: center;
+  color: var(--accent);
+  font-size: 16px;
+  flex: 0 0 auto;
+}
+
+/* ------------------- ETL: progresso + log ------------------- */
+.dops-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0 10px;
+}
+.dops-progress__track {
+  flex: 1;
+  height: 8px;
+  background: var(--bg-3);
+  border: 1px solid var(--line-2);
+  overflow: hidden;
+}
+.dops-progress__fill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  transition: width 0.25s ease;
+}
+.dops-progress__lbl {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--fg-2);
+  min-width: 38px;
+  text-align: right;
+}
+.dops-log {
+  margin-top: 14px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+/* ------------------- STATUS DA CONFERÊNCIA ------------------ */
+.dops-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  margin-bottom: 18px;
+  border: 1px solid var(--line-2);
+  background: var(--bg-3);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--fg-2);
+}
+.dops-status__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--fg-3);
+  flex: 0 0 auto;
+}
+.dops-status[data-state="fail"] {
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #ef4444;
+}
+.dops-status[data-state="fail"] .dops-status__dot {
+  background: #ef4444;
+  animation: pulse-live-cnn 1.6s infinite;
+}
+.dops-status[data-state="ok"] {
+  border-color: rgba(34, 197, 94, 0.5);
+  color: #22c55e;
+}
+.dops-status[data-state="ok"] .dops-status__dot { background: #22c55e; }
+
+/* ------------------- ALERTAS DA CONFERÊNCIA ----------------- */
+.dops-alerts {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+.dops-alert {
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  background: var(--bg-card);
+}
+.dops-alert__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 13px;
+}
+.dops-alert__badge {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  flex: 0 0 auto;
+}
+.dops-alert__title { flex: 1; line-height: 1.4; }
+.dops-alert__chev {
+  color: var(--fg-3);
+  flex: 0 0 auto;
+  transition: transform 0.2s ease;
+}
+.dops-alert--open .dops-alert__chev { transform: rotate(90deg); }
+.dops-alert__body {
+  display: none;
+  padding: 0 14px 14px;
+  border-top: 1px dashed var(--line-2);
+}
+.dops-alert--open .dops-alert__body { display: block; }
+.dops-alert__lbl {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--accent);
+  margin: 14px 0 4px;
+}
+.dops-alert__txt {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--fg-2);
+}
+.dops-alert__resolve {
+  margin-top: 14px;
+  padding: 8px 14px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  background: none;
+  border: 1px solid rgba(34, 197, 94, 0.5);
+  color: #22c55e;
+  cursor: pointer;
+}
+.dops-alert__resolve:hover { background: rgba(34, 197, 94, 0.1); }
+.dops-alert--resolved { border-color: rgba(34, 197, 94, 0.4); opacity: 0.75; }
+.dops-alert--resolved .dops-alert__badge {
+  color: #22c55e;
+  border-color: rgba(34, 197, 94, 0.5);
+}
+.dops-alert--resolved .dops-alert__title { text-decoration: line-through; }
+
+/* ------------------- CALCULADORA: resultado ----------------- */
+.dops-res {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.dops-res__block {
+  background: var(--bg-card);
+  border: 1px solid var(--line-2);
+  padding: 14px;
+  text-align: center;
+}
+.dops-res__block--accent { border-color: var(--accent); }
+.dops-res__lbl {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--fg-2);
+  margin-bottom: 6px;
+}
+.dops-res__val {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--fg);
+}
+.dops-verdict {
+  margin-top: 12px;
+  padding: 10px 14px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  border: 1px solid var(--line-2);
+}
+.dops-verdict--up { color: #22c55e; border-color: rgba(34, 197, 94, 0.5); }
+.dops-verdict--dn { color: #ef4444; border-color: rgba(239, 68, 68, 0.5); }
+
+/* ------------------- DASHBOARD: legenda do gráfico ---------- */
+.dops-chart-legend {
+  float: right;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  color: var(--fg-2);
+}
+.dops-chart-legend__fund { color: var(--accent); margin-right: 10px; }
+.dops-chart-legend__bmk  { color: var(--fg-3); }
+
+/* ------------------- MOBILE ---------------------------------- */
+@media (max-width: 768px) {
+  .dops-flow { flex-direction: column; }
+  .dops-flow__box { min-width: 0; }
+  .dops-flow__arrow {
+    transform: rotate(90deg);
+    align-self: center;
+    padding: 2px 0;
+  }
+  .dops-res { grid-template-columns: 1fr; }
+  .bi-tab--dops { overflow-x: auto; }
+  .bi-tab--dops .bi-tab__h,
+  .bi-tab--dops .bi-tab__r {
+    grid-template-columns: 1.6fr 1fr 0.9fr 0.9fr 0.9fr 0.9fr;
+    min-width: 520px;
+    font-size: 11px;
+  }
+}

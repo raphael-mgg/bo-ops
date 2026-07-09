@@ -65,8 +65,11 @@
 
   function onScroll() {
     const y = window.scrollY + 120;
-    let active = sections[0];
-    sections.forEach(s => { if (s.el.offsetTop <= y) active = s; });
+    // ignora seções de tabs ocultas (offsetParent null), senão elas
+    // "roubariam" o destaque com offsetTop = 0
+    const visiveis = sections.filter(s => s.el.offsetParent !== null);
+    let active = visiveis[0];
+    visiveis.forEach(s => { if (s.el.offsetTop <= y) active = s; });
     navLinks.forEach(a => a.classList.remove('active'));
     if (active) active.link.classList.add('active');
   }
@@ -945,7 +948,19 @@
     mercado: document.getElementById('tab-mercado'),
     diario:  document.getElementById('tab-diario'),
     broker:  document.getElementById('tab-broker'),
+    dataops: document.getElementById('tab-dataops'),
   };
+
+  // Dado um id de âncora, descobre em qual tab o alvo vive
+  // (seções fora de qualquer painel, como #sobre, pertencem ao fluxo do Diário)
+  function tabDoAlvo(id) {
+    const el = document.getElementById(id);
+    if (!el) return 'diario';
+    const panel = el.closest('.tab-panel');
+    if (!panel) return null; // visível em qualquer tab (ex.: #sobre, footer)
+    const entry = Object.entries(panels).find(([, p]) => p === panel);
+    return entry ? entry[0] : 'diario';
+  }
 
   function setTab(name) {
     tabs.forEach(t => {
@@ -968,7 +983,7 @@
   // links da sidebar superior também trocam tabs:
   // - Manchetes & Portais (#mercado) → tab Mercado
   // - Home Broker (#broker) → tab Broker
-  // - qualquer outro link → tab Diario + scroll pro id
+  // - demais links → tab do painel onde a âncora vive (Diário ou DATA·OPS) + scroll
   document.querySelectorAll('.sidebar a.nav-link').forEach(a => {
     a.addEventListener('click', e => {
       const id = a.getAttribute('href').slice(1);
@@ -979,10 +994,10 @@
         e.preventDefault();
         setTab('broker');
       } else {
-        // os outros links pertencem ao Diário
-        // garante que a tab Diário esteja ativa antes de rolar
-        if (panels.diario && panels.diario.hidden) {
-          setTab('diario');
+        const tab = tabDoAlvo(id);
+        // garante que a tab dona da âncora esteja ativa antes de rolar
+        if (tab && panels[tab] && panels[tab].hidden) {
+          setTab(tab);
           // espera um tick pra o painel virar visível antes de rolar
           setTimeout(() => {
             const target = document.getElementById(id);
@@ -995,6 +1010,24 @@
           e.preventDefault();
         }
       }
+    });
+  });
+
+  // links de conteúdo que apontam pra outra tab (ex.: CTA no fim da DATA·OPS)
+  document.querySelectorAll('a[data-tab-link]').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      const tab = a.getAttribute('data-tab-link');
+      const id = a.getAttribute('href').slice(1);
+      setTab(tab);
+      setTimeout(() => {
+        const target = document.getElementById(id);
+        if (target) {
+          const offset = window.innerWidth <= 768 ? 100 : 24;
+          const top = target.getBoundingClientRect().top + window.scrollY - offset;
+          window.scrollTo({ top, behavior: 'smooth' });
+        }
+      }, 50);
     });
   });
 
@@ -2190,5 +2223,402 @@
       renderCnnPanel();
     }
   }, 3000);
+
+})();
+
+// ============================================================
+// DATA·OPS — a mesa de dados
+// ETL simulado, conferência com alertas, calculadora e dashboard.
+// Todos os dados são sintéticos; o que tem aleatoriedade usa seed
+// fixa (mulberry32) pra ser reprodutível a cada visita.
+// ============================================================
+
+(function() {
+  'use strict';
+
+  if (!document.getElementById('tab-dataops')) return;
+
+  const fmtBR = (n, d = 2) =>
+    n.toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const fmtPct = (n, d = 2) => (n >= 0 ? '+' : '') + fmtBR(n * 100, d) + '%';
+
+  // PRNG com seed fixa — mesma sequência em toda visita
+  function mulberry32(seed) {
+    return function() {
+      seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // estado compartilhado entre as etapas (o dashboard lê daqui)
+  const state = {
+    cargas: 0,          // 0..4 fontes carregadas pelo ETL
+    confRodada: false,  // conferência das 9h já rodou?
+    alertas: [],        // alertas plantados (com flag resolvido)
+  };
+
+  // ---------------------------------------------------------
+  // ETAPA 1 — ETL: carga do dia com progresso + log de terminal
+  // ---------------------------------------------------------
+  const etlBtn = document.getElementById('dops-etl-run');
+  const etlReset = document.getElementById('dops-etl-reset');
+  const etlProgress = document.getElementById('dops-etl-progress');
+  const etlFill = document.getElementById('dops-etl-fill');
+  const etlPct = document.getElementById('dops-etl-pct');
+  const etlLog = document.getElementById('dops-etl-log');
+
+  // roteiro da carga: cada fonte emite suas linhas de log
+  // (os "avisos" plantados aqui são os que a conferência vai pegar)
+  const ETL_SCRIPT = [
+    { pct: 4,   html: '$ python etl_diario.py --data 2026-04-28\n' },
+    { pct: 10,  html: '\n[1/4] Preços B3 <span class="t-up">(precos_b3_20260428.csv)</span>\n' },
+    { pct: 22,  html: '      ✓ 486 linhas → fato_preco\n' },
+    { pct: 28,  html: '      <span class="t-r">[aviso] 1 ativo sem preço → log/pendencias_precos.csv</span>\n', carga: 1 },
+    { pct: 36,  html: '\n[2/4] Taxas ANBIMA <span class="t-up">(taxas_anbima_20260428.csv)</span>\n' },
+    { pct: 50,  html: '      ✓ 312 linhas → fato_taxa\n', carga: 2 },
+    { pct: 58,  html: '\n[3/4] Indexadores CDI · IMA-B 5 · Ibovespa\n' },
+    { pct: 70,  html: '      ✓ 3 séries · 126 linhas → fato_indexador\n', carga: 3 },
+    { pct: 78,  html: '\n[4/4] Carteiras do Administrador (4 arquivos .xml)\n' },
+    { pct: 88,  html: '      ✓ 58 posições → fato_carteira\n' },
+    { pct: 94,  html: '      <span class="t-r">[aviso] cotas oficiais: 3 de 4 fundos → fato_cota_admin</span>\n', carga: 4 },
+    { pct: 100, html: '\n<span class="t-up">[ok]</span> Carga do dia concluída em 4,2s — conferência liberada\n' },
+  ];
+
+  let etlTimers = [];
+
+  function rodarEtl() {
+    etlBtn.disabled = true;
+    etlBtn.textContent = '… carga em andamento';
+    etlProgress.hidden = false;
+    etlLog.hidden = false;
+    etlLog.innerHTML = '';
+    etlTimers.forEach(clearTimeout);
+    etlTimers = [];
+
+    let delay = 300;
+    ETL_SCRIPT.forEach(passo => {
+      etlTimers.push(setTimeout(() => {
+        etlLog.innerHTML += passo.html;
+        etlLog.scrollTop = etlLog.scrollHeight;
+        etlFill.style.width = passo.pct + '%';
+        etlPct.textContent = passo.pct + '%';
+        if (passo.carga) { state.cargas = passo.carga; atualizarDash(); }
+        if (passo.pct === 100) {
+          etlBtn.textContent = '✓ carga concluída';
+          etlReset.hidden = false;
+        }
+      }, delay));
+      delay += 280 + (passo.html.length > 60 ? 160 : 0);
+    });
+  }
+
+  function resetEtl() {
+    etlTimers.forEach(clearTimeout);
+    etlTimers = [];
+    etlBtn.disabled = false;
+    etlBtn.textContent = '▶ Rodar carga do dia';
+    etlProgress.hidden = true;
+    etlLog.hidden = true;
+    etlLog.innerHTML = '';
+    etlFill.style.width = '0%';
+    etlPct.textContent = '0%';
+    etlReset.hidden = true;
+    state.cargas = 0;
+    atualizarDash();
+  }
+
+  etlBtn && etlBtn.addEventListener('click', rodarEtl);
+  etlReset && etlReset.addEventListener('click', resetEtl);
+
+  // ---------------------------------------------------------
+  // ETAPA 2 — CONFERÊNCIA: 3 alertas plantados de propósito
+  // ---------------------------------------------------------
+  const confBtn = document.getElementById('dops-conf-run');
+  const confReset = document.getElementById('dops-conf-reset');
+  const confAlerts = document.getElementById('dops-alerts');
+  const confStatus = document.getElementById('dops-status');
+  const confStatusText = document.getElementById('dops-status-text');
+
+  const ALERTAS = [
+    {
+      tipo: 'COMPLETUDE',
+      titulo: 'FIA Dividendos sem cota no arquivo do administrador (3 de 4 fundos recebidos)',
+      causa: 'O arquivo de cotas oficiais chegou incompleto. Quase sempre é atraso no ' +
+             'fechamento do fundo no administrador — um resgate grande, um provento em ativo ' +
+             'da carteira, ou simplesmente falha no envio do arquivo.',
+      acao: 'Cobrar o administrador pelo canal oficial e registrar o horário do contato. ' +
+            'Enquanto a cota oficial não chega, o fundo NÃO entra no dashboard nem em ' +
+            'material pra mesa — número parcial é pior que número atrasado.',
+    },
+    {
+      tipo: 'SANIDADE',
+      titulo: 'TAEE11 variou +900% vs. ontem (R$ 34,51 → R$ 345,10) — acima da banda de ±10%',
+      causa: 'Padrão clássico de vírgula deslocada no feed de preços (345,10 no lugar de ' +
+             '34,51). Antes de concluir, confirmar numa segunda fonte e checar se não houve ' +
+             'provento, grupamento ou outro evento corporativo que explique um salto real.',
+      acao: 'Corrigir NA ORIGEM: reprocessar o arquivo com o preço certo — nunca editar o ' +
+            'número direto no banco, senão a próxima carga reintroduz o erro. Abrir chamado ' +
+            'com o provedor do feed.',
+    },
+    {
+      tipo: 'BATIMENTO',
+      titulo: 'FIRF Crédito Privado: cota do administrador diverge +8 bps do shadow NAV (tolerância: 1 bp)',
+      causa: 'Divergência acima de 1 bp quase sempre é UM ativo marcado diferente nos dois ' +
+             'lados. Em crédito privado, o suspeito usual é a marcação de uma debênture ' +
+             '(spread de crédito atualizado num lado e não no outro) ou provento apropriado ' +
+             'em datas diferentes.',
+      acao: 'Abrir a carteira posição a posição e comparar a marcação de cada ativo com a do ' +
+            'administrador até achar o que explica os 8 bps. Alinhar a marcação (ou contestar ' +
+            'a dele) antes do fechamento do dia.',
+    },
+  ];
+
+  function renderStatus() {
+    if (!state.confRodada) {
+      confStatus.dataset.state = 'idle';
+      confStatusText.textContent = 'AGUARDANDO CONFERÊNCIA';
+      return;
+    }
+    const abertos = state.alertas.filter(a => !a.resolvido).length;
+    if (abertos > 0) {
+      confStatus.dataset.state = 'fail';
+      confStatusText.textContent = 'DADOS NÃO LIBERADOS — ' + abertos + ' ALERTA' + (abertos > 1 ? 'S' : '') + ' ABERTO' + (abertos > 1 ? 'S' : '');
+    } else {
+      confStatus.dataset.state = 'ok';
+      confStatusText.textContent = 'DADOS LIBERADOS PARA A MESA ✓';
+    }
+  }
+
+  function renderAlertas() {
+    confAlerts.innerHTML = '';
+    state.alertas.forEach((a, i) => {
+      const el = document.createElement('div');
+      el.className = 'dops-alert' + (a.resolvido ? ' dops-alert--resolved' : '');
+      el.innerHTML =
+        '<button class="dops-alert__head" type="button" aria-expanded="false">' +
+          '<span class="dops-alert__badge">' + (a.resolvido ? '✓ RESOLVIDO' : a.tipo) + '</span>' +
+          '<span class="dops-alert__title">' + a.titulo + '</span>' +
+          '<span class="dops-alert__chev">▸</span>' +
+        '</button>' +
+        '<div class="dops-alert__body">' +
+          '<div class="dops-alert__lbl">CAUSA PROVÁVEL</div>' +
+          '<div class="dops-alert__txt">' + a.causa + '</div>' +
+          '<div class="dops-alert__lbl">AÇÃO</div>' +
+          '<div class="dops-alert__txt">' + a.acao + '</div>' +
+          (a.resolvido ? '' : '<button class="dops-alert__resolve" type="button">✓ Marcar como resolvido</button>') +
+        '</div>';
+
+      el.querySelector('.dops-alert__head').addEventListener('click', () => {
+        const aberto = el.classList.toggle('dops-alert--open');
+        el.querySelector('.dops-alert__head').setAttribute('aria-expanded', aberto);
+      });
+
+      const resolve = el.querySelector('.dops-alert__resolve');
+      resolve && resolve.addEventListener('click', () => {
+        state.alertas[i].resolvido = true;
+        renderAlertas();
+        renderStatus();
+        atualizarDash();
+      });
+
+      confAlerts.appendChild(el);
+    });
+  }
+
+  function rodarConferencia() {
+    state.confRodada = true;
+    state.alertas = ALERTAS.map(a => Object.assign({ resolvido: false }, a));
+    confBtn.disabled = true;
+    confBtn.textContent = '✓ conferência rodada — resolva os alertas';
+    confReset.hidden = false;
+    confAlerts.hidden = false;
+    renderAlertas();
+    renderStatus();
+    atualizarDash();
+  }
+
+  function resetConferencia() {
+    state.confRodada = false;
+    state.alertas = [];
+    confBtn.disabled = false;
+    confBtn.textContent = '▶ Rodar conferência';
+    confReset.hidden = true;
+    confAlerts.hidden = true;
+    confAlerts.innerHTML = '';
+    renderStatus();
+    atualizarDash();
+  }
+
+  confBtn && confBtn.addEventListener('click', rodarConferencia);
+  confReset && confReset.addEventListener('click', resetConferencia);
+
+  // ---------------------------------------------------------
+  // ETAPA 3 — CALCULADORA fundo x benchmark
+  // ---------------------------------------------------------
+  const calcBtn = document.getElementById('dops-calc-btn');
+
+  // aceita "1.234,56" (BR) e "1234.56" (US)
+  function parseNumBR(s) {
+    s = String(s || '').trim();
+    if (!s) return NaN;
+    if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
+    return parseFloat(s);
+  }
+
+  function calcular() {
+    const ini = parseNumBR(document.getElementById('dops-calc-ini').value);
+    const fim = parseNumBR(document.getElementById('dops-calc-fim').value);
+    const bmk = parseNumBR(document.getElementById('dops-calc-bmk').value) / 100;
+    const result = document.getElementById('dops-calc-result');
+    const verdict = document.getElementById('dops-calc-verdict');
+
+    if (!(ini > 0) || !(fim > 0) || isNaN(bmk)) {
+      result.hidden = false;
+      verdict.className = 'dops-verdict dops-verdict--dn';
+      verdict.textContent = '✗ Preencha as cotas (maiores que zero) e o retorno do benchmark.';
+      document.getElementById('dops-calc-ret').textContent = '—';
+      document.getElementById('dops-calc-bmk-out').textContent = '—';
+      document.getElementById('dops-calc-exc').textContent = '—';
+      return;
+    }
+
+    const ret = fim / ini - 1;          // retorno da cota
+    const excesso = ret - bmk;          // excesso vs. benchmark
+    const excessoBps = excesso * 10000; // em basis points
+
+    document.getElementById('dops-calc-ret').textContent = fmtPct(ret, 4);
+    document.getElementById('dops-calc-bmk-out').textContent = fmtPct(bmk, 4);
+    document.getElementById('dops-calc-exc').textContent =
+      (excessoBps >= 0 ? '+' : '') + fmtBR(excessoBps, 1) + ' bps';
+
+    result.hidden = false;
+    if (Math.abs(excessoBps) < 0.5) {
+      verdict.className = 'dops-verdict';
+      verdict.textContent = '≈ Empatou com o benchmark no período.';
+    } else if (excesso > 0) {
+      verdict.className = 'dops-verdict dops-verdict--up';
+      verdict.textContent = '✓ Bateu o benchmark por ' + fmtBR(excessoBps, 1) + ' bps no período.';
+    } else {
+      verdict.className = 'dops-verdict dops-verdict--dn';
+      verdict.textContent = '✗ Perdeu do benchmark por ' + fmtBR(Math.abs(excessoBps), 1) + ' bps no período.';
+    }
+  }
+
+  calcBtn && calcBtn.addEventListener('click', calcular);
+  ['dops-calc-ini', 'dops-calc-fim', 'dops-calc-bmk'].forEach(id => {
+    const el = document.getElementById(id);
+    el && el.addEventListener('keydown', e => { if (e.key === 'Enter') calcular(); });
+  });
+
+  // ---------------------------------------------------------
+  // ETAPA 4 — DASHBOARD: gráfico + tabela + cards de status
+  // ---------------------------------------------------------
+
+  // série de 60 pregões, seed fixa: benchmark é o "mercado";
+  // o fundo segue o mercado (beta ~0,8) com alfa pequeno
+  function gerarSeries() {
+    const rnd = mulberry32(20260428);
+    const gauss = () => (rnd() + rnd() + rnd() + rnd() - 2) / 2 * 1.75; // ~N(0,1)
+    const fundo = [100], bmk = [100];
+    for (let i = 1; i < 60; i++) {
+      const mercado = 0.0005 + 0.009 * gauss();
+      const proprio = 0.0004 + 0.005 * gauss();
+      bmk.push(bmk[i - 1] * (1 + mercado));
+      fundo.push(fundo[i - 1] * (1 + 0.8 * mercado + proprio));
+    }
+    return { fundo, bmk };
+  }
+
+  function desenharGrafico() {
+    const svgFund = document.getElementById('dops-chart-fund');
+    const svgArea = document.getElementById('dops-chart-fund-area');
+    const svgBmk = document.getElementById('dops-chart-bmk');
+    if (!svgFund) return;
+
+    const { fundo, bmk } = gerarSeries();
+    const todos = fundo.concat(bmk);
+    const min = Math.min.apply(null, todos);
+    const max = Math.max.apply(null, todos);
+    const W = 600, H = 160, PAD = 8;
+
+    const px = i => (i / (fundo.length - 1)) * W;
+    const py = v => PAD + (1 - (v - min) / (max - min)) * (H - 2 * PAD);
+    const path = serie => serie.map((v, i) =>
+      (i === 0 ? 'M' : 'L') + px(i).toFixed(1) + ',' + py(v).toFixed(1)).join(' ');
+
+    svgBmk.setAttribute('d', path(bmk));
+    svgFund.setAttribute('d', path(fundo));
+    svgArea.setAttribute('d', path(fundo) + ' L' + W + ',' + H + ' L0,' + H + ' Z');
+  }
+
+  // rentabilidades mês/ano dos 4 fundos da mesa (valores fixos, coerentes
+  // com o restante do site — Ibov YTD +8,20% aparece também na aba BI)
+  const FUNDOS_DASH = [
+    { fundo: 'FIRF Soberano CDI',    bmk: 'CDI',      fm: 0.0091, bm: 0.0089, fa: 0.0442, ba: 0.0437 },
+    { fundo: 'FIC Inflação Curta',   bmk: 'IMA-B 5',  fm: 0.0074, bm: 0.0081, fa: 0.0395, ba: 0.0410 },
+    { fundo: 'FIRF Crédito Privado', bmk: 'CDI',      fm: 0.0105, bm: 0.0089, fa: 0.0512, ba: 0.0437 },
+    { fundo: 'FIA Dividendos',       bmk: 'Ibovespa', fm: 0.0231, bm: 0.0184, fa: 0.0978, ba: 0.0820 },
+  ];
+
+  function renderTabelaDash() {
+    const rows = document.getElementById('dops-dash-rows');
+    if (!rows) return;
+    rows.innerHTML = FUNDOS_DASH.map(f => {
+      const clsM = f.fm >= f.bm ? 't-up' : 't-dn';
+      const clsA = f.fa >= f.ba ? 't-up' : 't-dn';
+      return '<div class="bi-tab__r">' +
+        '<div>' + f.fundo + '</div>' +
+        '<div>' + f.bmk + '</div>' +
+        '<div class="' + clsM + '">' + fmtPct(f.fm) + '</div>' +
+        '<div>' + fmtPct(f.bm) + '</div>' +
+        '<div class="' + clsA + '">' + fmtPct(f.fa) + '</div>' +
+        '<div>' + fmtPct(f.ba) + '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  // cards de status do dashboard refletem o que o usuário fez nas etapas
+  function atualizarDash() {
+    const kCargas = document.getElementById('dops-kpi-cargas');
+    const kCargasSub = document.getElementById('dops-kpi-cargas-sub');
+    const kAlertas = document.getElementById('dops-kpi-alertas');
+    const kAlertasSub = document.getElementById('dops-kpi-alertas-sub');
+    const kCota = document.getElementById('dops-kpi-cota');
+    const kCotaSub = document.getElementById('dops-kpi-cota-sub');
+    if (!kCargas) return;
+
+    kCargas.textContent = state.cargas + '/4';
+    kCargasSub.textContent = state.cargas === 4
+      ? 'todas as fontes no banco ✓'
+      : 'aguardando ETL das 08h';
+
+    if (!state.confRodada) {
+      kAlertas.textContent = '—';
+      kAlertasSub.textContent = 'conferência não rodada';
+      kCota.textContent = 'pendente';
+      kCotaSub.textContent = 'batimento vs administrador';
+      return;
+    }
+
+    const abertos = state.alertas.filter(a => !a.resolvido).length;
+    kAlertas.textContent = String(abertos);
+    kAlertasSub.textContent = abertos > 0 ? 'resolva na etapa das 09h' : 'tudo tratado ✓';
+
+    const batimento = state.alertas.find(a => a.tipo === 'BATIMENTO');
+    if (batimento && !batimento.resolvido) {
+      kCota.textContent = '✗ +8 bps';
+      kCotaSub.textContent = 'fora da tolerância de 1 bp';
+    } else {
+      kCota.textContent = '✓ 1 bp';
+      kCotaSub.textContent = 'dentro da tolerância';
+    }
+  }
+
+  desenharGrafico();
+  renderTabelaDash();
+  atualizarDash();
+  renderStatus();
 
 })();
