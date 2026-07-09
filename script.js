@@ -1772,8 +1772,9 @@
   //   Brapi:       https://brapi.dev/docs
   //   AwesomeAPI:  https://docs.awesomeapi.com.br/api-de-moedas
 
-  // Chave Brapi — visível no código por ser site estático (plano gratuito)
-  const BRAPI_TOKEN = 'qx8aQyBFWubLsp7zLHjukG';
+  // Chave Brapi — insira sua chave gratuita (https://brapi.dev) para cotações reais.
+  // Sem chave, o quadro de cotações roda em modo simulação.
+  const BRAPI_TOKEN = '';
   const BRAPI_BASE  = 'https://brapi.dev/api/quote';
   const BRAPI_TICKERS = ['PETR4', 'VALE3', 'ITUB4', 'BBDC4', 'WEGE3', 'BBAS3', '^BVSP'];
 
@@ -1803,6 +1804,9 @@
    * com {tk, preco, var, history}.
    */
   async function fetchBrapi() {
+    // Sem chave configurada, nem tenta a API — cai direto na simulação
+    if (!BRAPI_TOKEN) return { success: false };
+
     const cached = getCached(':brapi');
     if (cached) return { success: true, results: cached, fromCache: true };
 
