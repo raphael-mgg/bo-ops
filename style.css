@@ -660,7 +660,7 @@ body::before {
 }
 .excel-grid > .excel-row { display: contents; }
 
-.excel-grid:not(.excel-grid--cas):not(.excel-grid--cx) {
+.excel-grid:not(.excel-grid--cas):not(.excel-grid--cx):not(.excel-grid--liq) {
   grid-template-columns: 80px 110px 1fr 130px 50px 70px 100px 120px 80px;
 }
 .excel-grid--cas {
@@ -6233,4 +6233,78 @@ body::before {
   .toptabs { padding: 8px 6px 0; }
   .toptab { padding: 8px 10px 6px; }
   #tab-mercado, #tab-broker { border-width: 2px; }
+}
+
+/* ============================================================ */
+/* TESOURARIA·OPS — caixa, liquidação, margem, FX, cash ladder   */
+/* Reaproveita bi-mockup/excel-mockup/tool/dops-*; novos         */
+/* componentes usam prefixo tes-.                                */
+/* ============================================================ */
+
+/* mapa de liquidação: 7 colunas */
+.excel-grid--liq {
+  grid-template-columns: 1.6fr 0.9fr 0.7fr 1.1fr 0.6fr 1fr 1fr;
+}
+
+/* tabelas de tesouraria nos monitores: 5 colunas */
+.bi-tab--tes .bi-tab__h,
+.bi-tab--tes .bi-tab__r {
+  grid-template-columns: 1.8fr 0.7fr 1.1fr 1fr 1.8fr;
+}
+
+/* ------------------- GAUGE: caixa atual vs mínimo ------------ */
+.tes-gauge { margin-top: 16px; }
+.tes-gauge__lbl {
+  font-family: var(--fonte-mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--fg-3);
+  margin-bottom: 6px;
+}
+.tes-gauge__track {
+  position: relative;
+  height: 14px;
+  background: var(--bg-3);
+  border: 1px solid var(--line-2);
+}
+.tes-gauge__fill { height: 100%; background: var(--green); }
+.tes-gauge__min {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  border-left: 2px dashed var(--red);
+}
+.tes-gauge__min span {
+  position: absolute;
+  top: -14px;
+  left: 4px;
+  font-family: var(--fonte-mono);
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--red);
+  white-space: nowrap;
+}
+.tes-gauge__val {
+  margin-top: 10px;
+  font-family: var(--fonte-mono);
+  font-size: 12px;
+  color: var(--fg);
+}
+
+/* ------------------- SIMULADOR DE MARGEM --------------------- */
+#tool-tes-margem .ref-table { margin: 18px 0; }
+#tool-tes-margem .ref-table td { font-family: var(--fonte-mono); font-size: 12px; }
+.tes-deficit { color: var(--cor-carimbo); font-weight: 700; }
+.tes-excesso { color: var(--cor-arquivo); font-weight: 600; }
+
+/* ------------------- MOBILE ---------------------------------- */
+@media (max-width: 768px) {
+  .excel-grid--liq { font-size: 9px; }
+  .bi-tab--tes .bi-tab__h,
+  .bi-tab--tes .bi-tab__r {
+    grid-template-columns: 1.6fr 0.7fr 1fr 1fr 1.6fr;
+    min-width: 520px;
+    font-size: 11px;
+  }
+  .bi-tab--tes { overflow-x: auto; }
 }

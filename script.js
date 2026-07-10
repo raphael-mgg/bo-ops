@@ -949,6 +949,7 @@
     diario:  document.getElementById('tab-diario'),
     broker:  document.getElementById('tab-broker'),
     dataops: document.getElementById('tab-dataops'),
+    tesouraria: document.getElementById('tab-tesouraria'),
   };
 
   // Dado um id de âncora, descobre em qual tab o alvo vive
@@ -2620,5 +2621,199 @@
   renderTabelaDash();
   atualizarDash();
   renderStatus();
+
+})();
+
+// ============================================================
+// TESOURARIA·OPS — caixa, liquidação, margem, FX e cash ladder
+// Terceira camada da operação. Dados simulados e fixos (mesmo
+// padrão das outras abas); o que é interativo recalcula ao vivo.
+// ============================================================
+
+(function() {
+  'use strict';
+
+  if (!document.getElementById('tab-tesouraria')) return;
+
+  const fmtBR = (n, d = 2) =>
+    n.toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
+
+  // aceita "1.234,56" (BR), "1234.56" (US) e "211.500" (milhar BR sem
+  // vírgula: pontos agrupando exatamente 3 dígitos são separador de milhar)
+  function parseNumBR(s) {
+    s = String(s || '').trim();
+    if (!s) return NaN;
+    if (s.includes(',')) {
+      s = s.replace(/\./g, '').replace(',', '.');
+    } else if (/^\d{1,3}(\.\d{3})+$/.test(s)) {
+      s = s.replace(/\./g, '');
+    }
+    return parseFloat(s);
+  }
+
+  // ---------------------------------------------------------
+  // MARGEM & COLATERAL — simulador de chamada de margem
+  // ---------------------------------------------------------
+  // margem base requerida pela B3 por contrato (valores plausíveis
+  // pra um multimercado de médio porte; a B3 recalcula todo dia)
+  const MARGEM_POSICOES = [
+    { contrato: 'DI1 — futuro de juros',  posicao: '180 contratos', base: 486000 },
+    { contrato: 'DOL — dólar futuro',     posicao: '40 contratos',  base: 344000 },
+    { contrato: 'IND — índice futuro',    posicao: '25 contratos',  base: 232500 },
+  ];
+  const MARGEM_DEPOSITADA = 1200000; // LFT 900k + dinheiro 300k
+
+  const stressInput = document.getElementById('tes-stress');
+  const stressVal = document.getElementById('tes-stress-val');
+  const margemRows = document.getElementById('tes-margem-rows');
+  const margemStatus = document.getElementById('tes-margem-status');
+  const margemStatusText = document.getElementById('tes-margem-status-text');
+  const margemAcao = document.getElementById('tes-margem-acao');
+
+  function renderMargem() {
+    const stress = parseFloat(stressInput.value); // % adverso
+    // cada 1% contra a carteira eleva a margem requerida em ~24%
+    // (aproximação didática do recálculo de risco da câmara)
+    const fator = 1 + stress * 0.24;
+
+    let reqTotal = 0;
+    margemRows.innerHTML = MARGEM_POSICOES.map(p => {
+      const req = p.base * fator;
+      reqTotal += req;
+      return '<tr><td>' + p.contrato + '</td><td>' + p.posicao + '</td>' +
+             '<td>R$ ' + fmtBR(req, 0) + '</td><td>—</td><td>—</td></tr>';
+    }).join('') +
+    '<tr><td><strong>TOTAL</strong></td><td></td>' +
+    '<td><strong>R$ ' + fmtBR(reqTotal, 0) + '</strong></td>' +
+    '<td><strong>R$ ' + fmtBR(MARGEM_DEPOSITADA, 0) + '</strong></td>' +
+    '<td class="' + (MARGEM_DEPOSITADA >= reqTotal ? 'tes-excesso' : 'tes-deficit') + '"><strong>' +
+    (MARGEM_DEPOSITADA >= reqTotal ? '+' : '−') + 'R$ ' + fmtBR(Math.abs(MARGEM_DEPOSITADA - reqTotal), 0) +
+    '</strong></td></tr>';
+
+    stressVal.textContent = fmtBR(stress) + '%';
+
+    const folga = MARGEM_DEPOSITADA - reqTotal;
+    if (folga >= 0) {
+      margemStatus.dataset.state = stress === 0 ? 'idle' : 'ok';
+      margemStatusText.textContent = 'MARGEM OK — FOLGA DE R$ ' + fmtBR(folga, 0);
+      margemAcao.textContent = stress === 0 ? '' :
+        'O mercado andou contra, mas a folga segura. A tesouraria monitora — sem ação por enquanto.';
+    } else {
+      margemStatus.dataset.state = 'fail';
+      margemStatusText.textContent = 'CHAMADA DE MARGEM — APORTAR R$ ' + fmtBR(-folga, 0);
+      margemAcao.textContent = 'Aportar até o horário de corte da B3, em ordem de preferência: ' +
+        'LFT em garantia (continua rendendo), dinheiro (para de render) ou carta de fiança ' +
+        '(não consome caixa, mas custa taxa). Se não aportar, a corretora encerra posições.';
+    }
+  }
+
+  stressInput && stressInput.addEventListener('input', renderMargem);
+
+  // ---------------------------------------------------------
+  // MESA DE CÂMBIO — conversão USD→AUD ao vivo
+  // ---------------------------------------------------------
+  const fxValor = document.getElementById('tes-fx-valor');
+  const fxSpot = document.getElementById('tes-fx-spot');
+  const fxSpread = document.getElementById('tes-fx-spread');
+  const fxNota = document.getElementById('tes-fx-nota');
+
+  function renderFx() {
+    const aud = parseNumBR(fxValor.value);
+    const spot = parseNumBR(fxSpot.value);       // 1 AUD = spot USD
+    const spreadBps = parseNumBR(fxSpread.value);
+
+    const elUsd = document.getElementById('tes-fx-usd');
+    const elCusto = document.getElementById('tes-fx-custo');
+    const elTotal = document.getElementById('tes-fx-total');
+
+    if (!(aud > 0) || !(spot > 0) || isNaN(spreadBps) || spreadBps < 0) {
+      elUsd.textContent = elCusto.textContent = elTotal.textContent = '—';
+      fxNota.className = 'dops-verdict dops-verdict--dn';
+      fxNota.textContent = '✗ Preencha valor e taxa maiores que zero (spread pode ser 0).';
+      return;
+    }
+
+    const usdSpot = aud * spot;                    // sem spread
+    const custo = usdSpot * (spreadBps / 10000);   // o "pedágio" embutido
+    const total = usdSpot + custo;
+    const allIn = total / aud;                     // taxa efetiva por AUD
+
+    elUsd.textContent = 'USD ' + fmtBR(usdSpot);
+    elCusto.textContent = 'USD ' + fmtBR(custo);
+    elTotal.textContent = 'USD ' + fmtBR(total);
+
+    fxNota.className = 'dops-verdict';
+    fxNota.textContent = 'Taxa efetiva (all-in): 1 AUD = USD ' + fmtBR(allIn, 4) +
+      '. Conversão liquida em D+2 (30/04) — casada de propósito com a liquidação da compra da BHP. ' +
+      'A exposição AUD/USD que nasce aqui fica em carteira até a venda (ou até um NDF travar a taxa).';
+  }
+
+  [fxValor, fxSpot, fxSpread].forEach(el => el && el.addEventListener('input', renderFx));
+
+  // ---------------------------------------------------------
+  // CASH LADDER — projeção D+0 → D+5 (conta movimento BRL)
+  // ---------------------------------------------------------
+  const CAIXA_MINIMO = 1500000;
+  // 01/05/2026 (sexta) é feriado: D+3 útil pula pra 04/05
+  const LADDER = [
+    { dia: 'D+0', data: '28/04', entrada: 'venda LFT +1.050.000',            saida: 'ajuste futuros −38.420',      saldo: 2804500 },
+    { dia: 'D+1', data: '29/04', entrada: '—',                               saida: 'chamada de margem estimada −420.000', saldo: 2384500 },
+    { dia: 'D+2', data: '30/04', entrada: 'cupom NTN-B +350.000',            saida: 'liquidação PETR4 −901.980',   saldo: 1832520 },
+    { dia: 'D+3', data: '04/05', entrada: '—',                               saida: 'resgate de cotistas −1.200.000', saldo: 632520 },
+    { dia: 'D+4', data: '05/05', entrada: 'venda LFT (decidida hoje) +1.050.000', saida: '—',                      saldo: 1682520 },
+    { dia: 'D+5', data: '06/05', entrada: 'venda BHP convertida +897.000',   saida: '—',                           saldo: 2579520 },
+  ];
+
+  function renderLadder() {
+    const svg = document.getElementById('tes-ladder-svg');
+    const rows = document.getElementById('tes-ladder-rows');
+    if (!svg || !rows) return;
+
+    // ---- gráfico de barras com linha do mínimo ----
+    const W = 600, H = 210, TOPO = 24, BASE = H - 30;
+    const maxVal = 3000000;
+    const barW = 64, gap = (W - LADDER.length * barW) / (LADDER.length + 1);
+    const y = v => BASE - (v / maxVal) * (BASE - TOPO);
+
+    let s = '';
+    LADDER.forEach((d, i) => {
+      const x = gap + i * (barW + gap);
+      const abaixo = d.saldo < CAIXA_MINIMO;
+      const h = BASE - y(d.saldo);
+      s += '<rect x="' + x + '" y="' + y(d.saldo) + '" width="' + barW + '" height="' + h + '"' +
+           ' fill="' + (abaixo ? 'var(--red)' : 'var(--accent)') + '" opacity="0.85"/>';
+      s += '<text x="' + (x + barW / 2) + '" y="' + (y(d.saldo) - 6) + '" text-anchor="middle"' +
+           ' font-family="IBM Plex Mono, monospace" font-size="10"' +
+           ' fill="' + (abaixo ? 'var(--red)' : 'var(--fg)') + '">' + fmtBR(d.saldo / 1000000, 2) + '</text>';
+      s += '<text x="' + (x + barW / 2) + '" y="' + (BASE + 16) + '" text-anchor="middle"' +
+           ' font-family="IBM Plex Mono, monospace" font-size="10" fill="var(--fg-2)">' + d.dia + '</text>';
+      if (abaixo) {
+        s += '<text x="' + (x + barW / 2) + '" y="' + (TOPO - 8) + '" text-anchor="middle"' +
+             ' font-family="IBM Plex Mono, monospace" font-size="10" fill="var(--red)">⚠ ABAIXO DO MÍNIMO</text>';
+      }
+    });
+    // linha do caixa mínimo
+    // a linha dasheada é identificada na legenda do card ("– – mínimo");
+    // rótulo dentro do gráfico colidiria com as barras
+    s += '<line x1="0" y1="' + y(CAIXA_MINIMO) + '" x2="' + W + '" y2="' + y(CAIXA_MINIMO) + '"' +
+         ' stroke="var(--red)" stroke-width="1.5" stroke-dasharray="6,4"/>';
+    svg.innerHTML = s;
+
+    // ---- tabela de eventos ----
+    rows.innerHTML = LADDER.map(d => {
+      const abaixo = d.saldo < CAIXA_MINIMO;
+      return '<div class="bi-tab__r">' +
+        '<div>' + d.dia + '</div>' +
+        '<div>' + d.data + '</div>' +
+        '<div class="t-up">' + d.entrada + '</div>' +
+        '<div class="t-dn">' + d.saida + '</div>' +
+        '<div class="' + (abaixo ? 't-dn' : '') + '">R$ ' + fmtBR(d.saldo, 0) + (abaixo ? ' ⚠' : '') + '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  renderMargem();
+  renderFx();
+  renderLadder();
 
 })();

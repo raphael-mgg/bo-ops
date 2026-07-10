@@ -19,7 +19,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <!-- ?v= força navegadores a buscar a versão nova quando o site é atualizado -->
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
 
@@ -59,6 +59,14 @@
       <a href="#dataops-conferencia" class="nav-link"><span class="nav-time">09:00</span>Conferência diária</a>
       <a href="#dataops-motor" class="nav-link"><span class="nav-time">10:30</span>Motor de cálculo</a>
       <a href="#dataops-dash" class="nav-link"><span class="nav-time">11:00</span>Dashboard da mesa</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-title">○ TESOURARIA·OPS</div>
+      <a href="#tesouraria" class="nav-link"><span class="nav-time">07:45</span>Gestão de caixa</a>
+      <a href="#tes-liquidacao" class="nav-link"><span class="nav-time">09:30</span>Controle de liquidação</a>
+      <a href="#tes-margem" class="nav-link"><span class="nav-time">11:30</span>Margens &amp; colateral</a>
+      <a href="#tes-fx" class="nav-link"><span class="nav-time">14:00</span>Mesa de câmbio</a>
+      <a href="#tes-ladder" class="nav-link"><span class="nav-time">16:30</span>Projeção de caixa</a>
     </div>
     <div class="nav-section">
       <div class="nav-title">○ REFERÊNCIA</div>
@@ -102,6 +110,11 @@
     <span class="toptab__icon">◈</span>
     <span class="toptab__name">DATA·OPS</span>
     <span class="toptab__sub">Mesa de dados · ETL</span>
+  </button>
+  <button class="toptab" data-tab="tesouraria" role="tab" aria-selected="false">
+    <span class="toptab__icon">¤</span>
+    <span class="toptab__name">TESOURARIA·OPS</span>
+    <span class="toptab__sub">Caixa · liquidação · FX</span>
   </button>
 </nav>
 
@@ -2677,6 +2690,453 @@ print(<span class="c-str">f"[ok] {len(df)} preços carregados em fato_preco"</sp
 
 </div><!-- /tab-dataops -->
 
+<!-- ========== TAB: TESOURARIA·OPS — CAIXA, LIQUIDAÇÃO E FX ========== -->
+<div class="tab-panel" id="tab-tesouraria" role="tabpanel" hidden>
+
+<!-- ========== 07:45 GESTÃO DE CAIXA ========== -->
+<section class="section section--intro" id="tesouraria">
+  <div class="section__head">
+    <div class="section__num">00</div>
+    <div class="section__time">07:45</div>
+    <div class="section__kind">TESOURARIA·OPS · GESTÃO DE CAIXA</div>
+  </div>
+  <h2 class="section__title">Nada liquida sem caixa disponível.</h2>
+
+  <div class="prose">
+    <p>
+      A tesouraria é a terceira camada da operação: o <strong>backoffice</strong> processa as
+      operações, os <strong>dados</strong> validam os números, e a tesouraria garante que o
+      <strong>caixa está no lugar certo, na moeda certa, na hora certa</strong>. O dilema é
+      permanente: caixa parado tem custo de oportunidade (podia estar rendendo CDI);
+      caixa insuficiente gera <em>overdraft</em> — juro punitivo e chamada do custodiante.
+      O equilíbrio entre os dois é o trabalho.
+    </p>
+  </div>
+
+  <div class="demo">
+    <div class="demo__lbl">AS TRÊS CAMADAS DA OPERAÇÃO</div>
+    <div class="dops-flow">
+      <div class="dops-flow__box">
+        <div class="dops-flow__h">BACKOFFICE</div>
+        <div class="dops-flow__b">processa as operações<br>boletas · conciliação · cota</div>
+      </div>
+      <div class="dops-flow__arrow" aria-hidden="true">→</div>
+      <div class="dops-flow__box">
+        <div class="dops-flow__h">DADOS</div>
+        <div class="dops-flow__b">valida os números<br>ETL · completude · batimento</div>
+      </div>
+      <div class="dops-flow__arrow" aria-hidden="true">→</div>
+      <div class="dops-flow__box dops-flow__box--dst">
+        <div class="dops-flow__h">TESOURARIA</div>
+        <div class="dops-flow__b">garante o caixa<br>moeda certa · hora certa</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo">
+    <div class="demo__lbl">DEMONSTRAÇÃO · POSIÇÃO DE CAIXA DA MANHÃ (DADOS SIMULADOS)</div>
+    <div class="bi-mockup">
+      <div class="bi-head">
+        <div class="bi-title">ALPHA CAPITAL · TESOURARIA — CAIXA</div>
+        <div class="bi-date">D0 · 28/04/2026 · 07:45</div>
+      </div>
+      <div class="bi-kpis">
+        <div class="bi-kpi">
+          <div class="bi-kpi__lbl">CAIXA TOTAL (≈ BRL)</div>
+          <div class="bi-kpi__val">R$ 7,23 mi</div>
+          <div class="bi-kpi__delta">todas as contas e moedas</div>
+        </div>
+        <div class="bi-kpi">
+          <div class="bi-kpi__lbl">CAIXA MÍNIMO OPERACIONAL</div>
+          <div class="bi-kpi__val">R$ 1,50 mi</div>
+          <div class="bi-kpi__delta">na conta movimento BRL</div>
+        </div>
+        <div class="bi-kpi">
+          <div class="bi-kpi__lbl">FOLGA NA CONTA MOVIMENTO</div>
+          <div class="bi-kpi__val t-up">+R$ 1,30 mi</div>
+          <div class="bi-kpi__delta">2,80 atual vs 1,50 mínimo</div>
+        </div>
+      </div>
+      <div class="bi-row">
+        <div class="bi-card bi-card--full">
+          <div class="bi-card__title">SALDOS POR CONTA E MOEDA</div>
+          <div class="bi-tab bi-tab--tes">
+            <div class="bi-tab__h"><div>CONTA</div><div>MOEDA</div><div>SALDO</div><div>≈ BRL</div><div>OBSERVAÇÃO</div></div>
+            <div class="bi-tab__r"><div>Custodiante local — conta movimento</div><div>BRL</div><div>2.804.500,00</div><div>2.804.500</div><div>liquidações do dia saem daqui</div></div>
+            <div class="bi-tab__r"><div>Conta margem B3</div><div>BRL</div><div>1.200.000,00</div><div>1.200.000</div><div>LFT 900k + dinheiro 300k em garantia</div></div>
+            <div class="bi-tab__r"><div>Corretora internacional</div><div>USD</div><div>452.000,00</div><div>2.341.360</div><div>caixa offshore (PTAX 5,18)</div></div>
+            <div class="bi-tab__r"><div>Corretora internacional</div><div>EUR</div><div>86.300,00</div><div>485.006</div><div>sobra de venda de ADR europeu</div></div>
+            <div class="bi-tab__r"><div>Corretora internacional</div><div>AUD</div><div>118.400,00</div><div>400.192</div><div>reservado pra ordem BHP (ver 14:00)</div></div>
+          </div>
+          <div class="tes-gauge" role="img" aria-label="Conta movimento: R$ 2,80 milhões, acima do mínimo de R$ 1,50 milhão">
+            <div class="tes-gauge__lbl">CONTA MOVIMENTO vs MÍNIMO</div>
+            <div class="tes-gauge__track">
+              <div class="tes-gauge__fill" style="width:70%"></div>
+              <div class="tes-gauge__min" style="left:37.5%"><span>mín 1,50</span></div>
+            </div>
+            <div class="tes-gauge__val">R$ 2,80 mi <span class="t-up">· folga de 87% sobre o mínimo</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="how">
+    <div class="how__lbl">COMO O TESOUREIRO LÊ ESSE PAINEL</div>
+    <ol class="steps">
+      <li>Conta movimento acima do mínimo? Se sim, o dia começa sem pânico</li>
+      <li>Tem moeda estrangeira parada além do necessário? EUR 86 mil sem uso previsto → candidata a conversão</li>
+      <li>O AUD reservado cobre a ordem da mesa? Ver na seção das 14:00</li>
+      <li>Margem B3 com folga? Ver na seção das 11:30 — se o mercado abrir contra, vem chamada</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ========== 09:30 LIQUIDAÇÃO ========== -->
+<section class="section" id="tes-liquidacao">
+  <div class="section__head">
+    <div class="section__num">01</div>
+    <div class="section__time">09:30</div>
+    <div class="section__kind">CONTROLE DE LIQUIDAÇÃO · SETTLEMENT</div>
+  </div>
+  <h2 class="section__title">Cada mercado liquida no seu ritmo. A tesouraria rege todos.</h2>
+
+  <div class="problem">
+    <div class="problem__lbl">A DOR REAL</div>
+    <p>
+      Título público brasileiro liquida em <strong>D+0/D+1 no Selic</strong>. Ação Brasil,
+      <strong>D+2 na B3</strong>. Ativo offshore, <strong>D+1/D+2 via Euroclear ou DTC</strong> —
+      cada um com seu horário de corte e sua moeda. O mapa de liquidação do dia diz quanto
+      sai e quanto entra de cada conta, e em que ordem. Quando uma perna não liquida,
+      é <strong>fail</strong> — e fail custa caro.
+    </p>
+  </div>
+
+  <div class="demo">
+    <div class="demo__lbl">DEMONSTRAÇÃO · MAPA DE LIQUIDAÇÃO DO DIA</div>
+    <div class="excel-mockup">
+      <div class="excel-grid excel-grid--liq">
+        <div class="excel-row excel-row--head">
+          <div>ativo</div><div>mercado</div><div>moeda</div><div>valor</div><div>ciclo</div><div>data prevista</div><div>status</div>
+        </div>
+        <div class="excel-row excel-row--ok">
+          <div>LFT 2029 (venda)</div><div>Selic</div><div>BRL</div><div>1.050.000,00</div><div>D+0</div><div>28/04</div><div>LIQUIDADA</div>
+        </div>
+        <div class="excel-row excel-row--ok">
+          <div>Ajuste futuros DI/DOL</div><div>B3</div><div>BRL</div><div>−38.420,00</div><div>D+1</div><div>28/04</div><div>LIQUIDADA</div>
+        </div>
+        <div class="excel-row excel-row--falt">
+          <div>PETR4 (compra 23.400)</div><div>B3</div><div>BRL</div><div>−901.980,00</div><div>D+2</div><div>30/04</div><div>PENDENTE</div>
+        </div>
+        <div class="excel-row excel-row--falt">
+          <div>US Treasury 2Y (compra)</div><div>DTC</div><div>USD</div><div>−98.750,00</div><div>D+1</div><div>29/04</div><div>PENDENTE</div>
+        </div>
+        <div class="excel-row excel-row--div">
+          <div>BHP Group (venda 4.100)</div><div>Euroclear</div><div>AUD</div><div>+173.430,00</div><div>D+2</div><div>28/04</div><div>FALHA</div>
+        </div>
+      </div>
+    </div>
+    <div class="legend">
+      <span class="legend-item legend-item--ok">LIQUIDADA · dinheiro na conta</span>
+      <span class="legend-item legend-item--falt">PENDENTE · dentro do ciclo normal</span>
+      <span class="legend-item legend-item--div">FALHA · a perna não veio na data</span>
+    </div>
+  </div>
+
+  <div class="errors">
+    <div class="err">
+      <div class="err__h">Fail custa dinheiro</div>
+      <div class="err__b">O caixa que devia entrar não entrou — se você contava com ele pra pagar outra perna, precisa de funding de emergência (linha overnight, venda forçada).</div>
+    </div>
+    <div class="err">
+      <div class="err__h">Fail é risco de contraparte</div>
+      <div class="err__b">Você entregou (ou reservou) o seu lado e o outro não entregou o dele. Quanto mais dias em aberto, maior a exposição se a contraparte quebrar.</div>
+    </div>
+    <div class="err">
+      <div class="err__h">Fail gera multa e buy-in</div>
+      <div class="err__b">Câmaras punem: multa por atraso e, se persistir, buy-in compulsório — a câmara compra o ativo no mercado por sua conta, pelo preço que estiver.</div>
+    </div>
+  </div>
+
+  <div class="how">
+    <div class="how__lbl">COMO O TESOUREIRO TRATA A FALHA DA BHP</div>
+    <ol class="steps">
+      <li>Confirma com a corretora internacional o motivo (instrução errada, ativo bloqueado, contraparte sem papel)</li>
+      <li>Reprograma a liquidação e registra o fail no sistema com data original e nova</li>
+      <li>Recalcula a projeção de caixa em AUD — a conversão AUD→USD planejada fica em espera</li>
+      <li>Se o fail passar de D+2 da data original, escala pro jurídico/compliance avaliar buy-in</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ========== 11:30 MARGENS E COLATERAL ========== -->
+<section class="section" id="tes-margem">
+  <div class="section__head">
+    <div class="section__num">02</div>
+    <div class="section__time">11:30</div>
+    <div class="section__kind">MARGENS &amp; COLATERAL · B3</div>
+  </div>
+  <h2 class="section__title">Derivativo não pede licença: pede margem.</h2>
+
+  <div class="problem">
+    <div class="problem__lbl">A DOR REAL</div>
+    <p>
+      Toda posição em futuros exige <strong>margem de garantia</strong> depositada na B3.
+      Se o mercado anda contra a posição, a margem requerida <strong>sobe</strong> — e se ela
+      passa do que está depositado, vem a <strong>chamada de margem</strong>: aporte colateral
+      até o horário de corte ou a corretora encerra a posição compulsoriamente.
+      A tesouraria mantém a conta margem sempre com folga — mas folga demais é caixa parado.
+    </p>
+  </div>
+
+  <!-- ===== TOOL: simulador de chamada de margem ===== -->
+  <div class="tool" id="tool-tes-margem">
+    <div class="tool__head">
+      <span class="tool__badge">⚙ FERRAMENTA INTERATIVA</span>
+      <span class="tool__name">Simulador de chamada de margem</span>
+    </div>
+    <div class="tool__body">
+      <p class="tool__intro">
+        Arraste o slider pra simular um movimento do mercado <strong>contra</strong> a carteira
+        de futuros. Veja a margem requerida subir e a folga virar chamada — exatamente a conta
+        que a tesouraria refaz várias vezes por dia em mercado nervoso.
+      </p>
+
+      <div class="sim-slider" data-asset="stress">
+        <div class="sim-slider__head"><span>MOVIMENTO ADVERSO DO MERCADO</span><span class="sim-slider__val" id="tes-stress-val">0,00%</span></div>
+        <input type="range" min="0" max="5" step="0.25" value="0" class="sim-range" id="tes-stress" aria-label="Movimento adverso do mercado em porcentagem">
+      </div>
+
+      <table class="ref-table">
+        <thead>
+          <tr><th>Contrato</th><th>Posição</th><th>Margem requerida</th><th>Depositada</th><th>Excesso / déficit</th></tr>
+        </thead>
+        <tbody id="tes-margem-rows">
+          <!-- preenchido por JS -->
+        </tbody>
+      </table>
+
+      <div class="dops-status" data-state="idle" id="tes-margem-status">
+        <span class="dops-status__dot"></span>
+        <span class="dops-status__text" id="tes-margem-status-text">MARGEM OK — FOLGA DE R$ 137.500</span>
+      </div>
+      <div class="dops-alert__txt" id="tes-margem-acao" style="margin-top:10px;"></div>
+    </div>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="card__num">1º</div>
+      <div class="card__lbl">TÍTULO PÚBLICO</div>
+      <ul class="card__list">
+        <li>LFT/LTN em garantia</li>
+        <li>continua rendendo</li>
+        <li>deságio (haircut) pequeno</li>
+        <li>a escolha padrão da tesouraria</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card__num">2º</div>
+      <div class="card__lbl">DINHEIRO</div>
+      <ul class="card__list">
+        <li>aceito sempre, sem haircut</li>
+        <li>mas para de render pro fundo</li>
+        <li>usado no aperto ou no curtíssimo prazo</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card__num">3º</div>
+      <div class="card__lbl">CARTA DE FIANÇA</div>
+      <ul class="card__list">
+        <li>banco garante por você</li>
+        <li>não consome caixa nem títulos</li>
+        <li>mas custa taxa ao ano</li>
+        <li>e depende de limite aprovado</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 14:00 MESA DE CÂMBIO ========== -->
+<section class="section" id="tes-fx">
+  <div class="section__head">
+    <div class="section__num">03</div>
+    <div class="section__time">14:00</div>
+    <div class="section__kind">MESA DE CÂMBIO · FX</div>
+  </div>
+  <h2 class="section__title">A mesa quer comprar na Austrália. O caixa está em dólar.</h2>
+
+  <div class="problem">
+    <div class="problem__lbl">O CASO GUIADO</div>
+    <p>
+      O gestor mandou ordem de compra de <strong>BHP Group</strong>, negociada em
+      <strong>AUD</strong> na bolsa australiana. O caixa do fundo offshore está em
+      <strong>USD</strong>. A tesouraria precisa: <strong>1)</strong> converter USD→AUD no
+      câmbio à vista (spot, que também liquida em D+2); <strong>2)</strong> liquidar a compra
+      da ação em AUD; <strong>3)</strong> na venda futura, receber AUD e converter de volta
+      AUD→USD. Cada conversão paga <em>spread</em>, tem prazo próprio — e deixa
+      <strong>exposição cambial residual</strong> que pode precisar de hedge via NDF.
+    </p>
+  </div>
+
+  <div class="demo">
+    <div class="demo__lbl">O FLUXO DA OPERAÇÃO</div>
+    <div class="dops-flow">
+      <div class="dops-flow__box">
+        <div class="dops-flow__h">1 · FX SPOT</div>
+        <div class="dops-flow__b">USD → AUD<br>liquida D+2</div>
+      </div>
+      <div class="dops-flow__arrow" aria-hidden="true">→</div>
+      <div class="dops-flow__box">
+        <div class="dops-flow__h">2 · COMPRA</div>
+        <div class="dops-flow__b">paga BHP em AUD<br>bolsa AU · D+2</div>
+      </div>
+      <div class="dops-flow__arrow" aria-hidden="true">→</div>
+      <div class="dops-flow__box">
+        <div class="dops-flow__h">3 · VENDA FUTURA</div>
+        <div class="dops-flow__b">recebe AUD<br>converte AUD → USD</div>
+      </div>
+      <div class="dops-flow__arrow" aria-hidden="true">→</div>
+      <div class="dops-flow__box dops-flow__box--check">
+        <div class="dops-flow__h">RESIDUAL</div>
+        <div class="dops-flow__b">exposição AUD/USD<br>hedge? NDF</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TOOL: simulador de conversão ===== -->
+  <div class="tool" id="tool-tes-fx">
+    <div class="tool__head">
+      <span class="tool__badge">⚙ FERRAMENTA INTERATIVA</span>
+      <span class="tool__name">Simulador de conversão — USD → AUD</span>
+    </div>
+    <div class="tool__body">
+      <p class="tool__intro">
+        Altere qualquer campo e o custo recalcula na hora. O spread é o "pedágio" do banco:
+        você não vê tarifa na nota — ela está embutida na taxa que te deram.
+        Aceita vírgula ou ponto decimal.
+      </p>
+
+      <div class="tool__form">
+        <label class="tool__field">
+          <span class="tool__lbl">Valor da ordem (AUD)</span>
+          <input type="text" id="tes-fx-valor" class="tool__input" inputmode="decimal" value="211.500">
+        </label>
+        <label class="tool__field">
+          <span class="tool__lbl">Taxa spot AUD/USD</span>
+          <input type="text" id="tes-fx-spot" class="tool__input" inputmode="decimal" value="0,6520">
+        </label>
+        <label class="tool__field">
+          <span class="tool__lbl">Spread (bps)</span>
+          <input type="text" id="tes-fx-spread" class="tool__input" inputmode="decimal" value="12">
+        </label>
+      </div>
+
+      <div class="tool__result" id="tes-fx-result">
+        <div class="dops-res">
+          <div class="dops-res__block">
+            <div class="dops-res__lbl">USD PELA TAXA SPOT</div>
+            <div class="dops-res__val" id="tes-fx-usd">—</div>
+          </div>
+          <div class="dops-res__block dops-res__block--accent">
+            <div class="dops-res__lbl">CUSTO DO SPREAD</div>
+            <div class="dops-res__val" id="tes-fx-custo">—</div>
+          </div>
+          <div class="dops-res__block">
+            <div class="dops-res__lbl">USD TOTAL (ALL-IN) · LIQUIDA D+2</div>
+            <div class="dops-res__val" id="tes-fx-total">—</div>
+          </div>
+        </div>
+        <div class="dops-verdict" id="tes-fx-nota"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="solution">
+    <div class="solution__lbl">E O RESIDUAL?</div>
+    <p>
+      Enquanto o fundo carregar BHP, o cotista brasileiro está exposto a <strong>duas</strong>
+      variações: a da ação em AUD e a do câmbio AUD/USD (e USD/BRL na consolidação).
+      Se o mandato não quer o risco cambial, a tesouraria contrata um <strong>NDF</strong>
+      (contrato a termo sem entrega física) do tamanho da posição — travando a taxa
+      futura e deixando só o risco do papel.
+    </p>
+  </div>
+</section>
+
+<!-- ========== 16:30 PROJEÇÃO DE CAIXA ========== -->
+<section class="section" id="tes-ladder">
+  <div class="section__head">
+    <div class="section__num">04</div>
+    <div class="section__time">16:30</div>
+    <div class="section__kind">PROJEÇÃO DE CAIXA · CASH LADDER</div>
+  </div>
+  <h2 class="section__title">O caixa de hoje já está comprometido com a semana.</h2>
+
+  <div class="problem">
+    <div class="problem__lbl">A DOR REAL</div>
+    <p>
+      Saldo de hoje não diz nada sozinho: o que importa é o saldo <strong>projetado</strong> —
+      cada liquidação a pagar e a receber, resgate de cotista, cupom de título e chamada de
+      margem estimada, dia a dia. O <em>cash ladder</em> é a escada dos próximos dias úteis.
+      Quando um degrau fura o caixa mínimo, a tesouraria age <strong>hoje</strong>, não no dia
+      do problema.
+    </p>
+  </div>
+
+  <div class="demo">
+    <div class="demo__lbl">DEMONSTRAÇÃO · CASH LADDER D+0 → D+5 (CONTA MOVIMENTO BRL)</div>
+    <div class="bi-mockup">
+      <div class="bi-head">
+        <div class="bi-title">ALPHA CAPITAL · TESOURARIA — PROJEÇÃO</div>
+        <div class="bi-date">D0 · 28/04/2026 · mínimo R$ 1,50 mi</div>
+      </div>
+      <div class="bi-row">
+        <div class="bi-card bi-card--full">
+          <div class="bi-card__title">SALDO PROJETADO POR DIA ÚTIL <span class="dops-chart-legend"><span class="dops-chart-legend__fund">■ saldo</span> <span class="dops-chart-legend__bmk">– – mínimo</span></span></div>
+          <svg viewBox="0 0 600 210" class="bi-svg" preserveAspectRatio="xMidYMid meet" id="tes-ladder-svg" role="img" aria-label="Gráfico de barras do saldo projetado; D+3 abaixo do mínimo">
+            <!-- desenhado por JS -->
+          </svg>
+        </div>
+      </div>
+      <div class="bi-row">
+        <div class="bi-card bi-card--full">
+          <div class="bi-card__title">EVENTOS PREVISTOS</div>
+          <div class="bi-tab bi-tab--tes">
+            <div class="bi-tab__h"><div>DIA</div><div>DATA</div><div>ENTRADAS</div><div>SAÍDAS</div><div>SALDO PROJETADO</div></div>
+            <div id="tes-ladder-rows"><!-- preenchido por JS --></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="how">
+    <div class="how__lbl">A LEITURA — E A AÇÃO DE HOJE</div>
+    <ol class="steps">
+      <li>D+3 (04/05, pulando o feriado de 1º de maio) fura o mínimo: resgate de cotistas de R$ 1,20 mi sai no mesmo dia em que o caixa já está baixo</li>
+      <li>A tesouraria decide <strong>hoje</strong>: vender LFT com liquidação D+1 programada pra entrar em D+4 — e, se o fail da BHP se resolver, a conversão AUD→USD reforça D+5</li>
+      <li>Alternativas descartadas: linha overnight (juro caro) e atrasar o resgate (nem pensar — é regra do regulamento)</li>
+      <li>Amanhã o ladder recalcula com os números do dia — projeção de caixa é disciplina diária, não planilha de gaveta</li>
+    </ol>
+  </div>
+
+  <div class="prose">
+    <p>
+      Fecha o circuito da gestora: a mesa decide <em>o que</em> comprar, o backoffice garante
+      que a operação <em>bate</em>, os dados garantem que o número é <em>íntegro</em> — e a
+      tesouraria garante que, quando a conta chegar, <strong>o dinheiro está lá</strong>.
+    </p>
+  </div>
+
+  <div class="hero__cta">
+    <a href="#caixa" class="cta cta--primary" data-tab-link="diario">Ver a necessidade de caixa no backoffice →</a>
+    <a href="#dataops" class="cta cta--ghost" data-tab-link="dataops">Ver a mesa de dados →</a>
+  </div>
+</section>
+
+</div><!-- /tab-tesouraria -->
+
 <!-- ========== SOBRE — VERSÃO COMPLETA ========== -->
 <section class="about-full" id="sobre">
   <div class="about-full__head">
@@ -2789,6 +3249,6 @@ print(<span class="c-str">f"[ok] {len(df)} preços carregados em fato_preco"</sp
 
 </main>
 
-<script src="script.js?v=3"></script>
+<script src="script.js?v=6"></script>
 </body>
 </html>
