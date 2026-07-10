@@ -2398,7 +2398,7 @@
       el.className = 'dops-alert' + (a.resolvido ? ' dops-alert--resolved' : '');
       el.innerHTML =
         '<button class="dops-alert__head" type="button" aria-expanded="false">' +
-          '<span class="dops-alert__badge">' + (a.resolvido ? '✓ RESOLVIDO' : a.tipo) + '</span>' +
+          '<span class="dops-alert__badge">' + (a.resolvido ? 'BAIXADO ✓' : a.tipo) + '</span>' +
           '<span class="dops-alert__title">' + a.titulo + '</span>' +
           '<span class="dops-alert__chev">▸</span>' +
         '</button>' +
