@@ -19,7 +19,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <!-- ?v= força navegadores a buscar a versão nova quando o site é atualizado -->
-<link rel="stylesheet" href="style.css?v=5">
+<link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
 
@@ -69,6 +69,17 @@
       <a href="#tes-ladder" class="nav-link"><span class="nav-time">16:30</span>Projeção de caixa</a>
     </div>
     <div class="nav-section">
+      <div class="nav-title">○ DTVM·OPS</div>
+      <a href="#dtvm" class="nav-link"><span class="nav-time">08:30</span>A mesa de secundário</a>
+      <a href="#dtvm-blotter" class="nav-link"><span class="nav-time">09:00</span>Blotter da mesa</a>
+      <a href="#dtvm-confirmacao" class="nav-link"><span class="nav-time">10:00</span>Confirmação</a>
+      <a href="#dtvm-pu" class="nav-link"><span class="nav-time">11:00</span>Calculadora de PU</a>
+      <a href="#dtvm-liquidacao" class="nav-link"><span class="nav-time">14:00</span>Liquidação B3/Selic</a>
+      <a href="#dtvm-conciliacao" class="nav-link"><span class="nav-time">17:00</span>Conciliação</a>
+      <a href="#dtvm-agenda" class="nav-link"><span class="nav-time">17:30</span>Agenda de eventos</a>
+      <a href="#dtvm-relatorio" class="nav-link"><span class="nav-time">18:00</span>Relatório gerencial</a>
+    </div>
+    <div class="nav-section">
       <div class="nav-title">○ REFERÊNCIA</div>
       <a href="#fluxos" class="nav-link"><span class="nav-time">REF</span>Fluxos B3/Selic/SPB</a>
       <a href="#stack" class="nav-link"><span class="nav-time">STACK</span>Excel · VBA · Python · BI</a>
@@ -115,6 +126,11 @@
     <span class="toptab__icon">¤</span>
     <span class="toptab__name">TESOURARIA·OPS</span>
     <span class="toptab__sub">Caixa · liquidação · FX</span>
+  </button>
+  <button class="toptab" data-tab="dtvm" role="tab" aria-selected="false">
+    <span class="toptab__icon">⇌</span>
+    <span class="toptab__name">DTVM·OPS</span>
+    <span class="toptab__sub">Crédito · secundário · DVP</span>
   </button>
 </nav>
 
@@ -3137,6 +3153,719 @@ print(<span class="c-str">f"[ok] {len(df)} preços carregados em fato_preco"</sp
 
 </div><!-- /tab-tesouraria -->
 
+<!-- ========== TAB: DTVM·OPS — MESA DE CRÉDITO PRIVADO (INTERMEDIAÇÃO) ========== -->
+<div class="tab-panel" id="tab-dtvm" role="tabpanel" hidden>
+
+<!-- ========== 08:30 A MESA DE SECUNDÁRIO ========== -->
+<section class="section section--intro" id="dtvm">
+  <div class="section__head">
+    <div class="section__num">00</div>
+    <div class="section__time">08:30</div>
+    <div class="section__kind">DTVM·OPS · A MESA DE SECUNDÁRIO</div>
+  </div>
+  <h2 class="section__title">A DTVM não gere o dinheiro. Leva cada negócio até a liquidação.</h2>
+
+  <div class="prose">
+    <p>
+      As outras abas mostram uma <strong>gestora</strong>: ela decide o que comprar com o dinheiro
+      dos cotistas. Aqui o lado é outro. Uma <strong>DTVM de crédito privado</strong> com mesa de
+      secundário faz <strong>intermediação</strong>: compra debênture, CRI, CRA ou LF de quem quer
+      vender e repassa a quem quer comprar. A receita é o <em>spread</em> entre as duas pontas,
+      alguns basis points por negócio.
+    </p>
+    <p>
+      Numa <strong>operação casada</strong> (comprou de um, vendeu a outro, mesmo ativo, mesma
+      quantidade, mesma data) a DTVM não fica com risco de mercado. Mas fica com todo o risco
+      <strong>operacional</strong>: cada perna precisa ser confirmada, liquidada e conciliada.
+      É disso que o backoffice cuida. A Ponte DTVM, os ativos e as contrapartes desta aba são
+      fictícios; os números são gerados por uma semente fixa e se repetem a cada carga.
+    </p>
+  </div>
+
+  <div class="demo">
+    <div class="demo__lbl">O CICLO DE CADA NEGÓCIO</div>
+    <div class="dops-flow">
+      <div class="dops-flow__box dops-flow__box--src">
+        <div class="dops-flow__h">1 · NEGÓCIO</div>
+        <div class="dops-flow__b">a mesa fecha<br>e lança no blotter</div>
+      </div>
+      <div class="dops-flow__arrow" aria-hidden="true">→</div>
+      <div class="dops-flow__box">
+        <div class="dops-flow__h">2 · CONFIRMAÇÃO</div>
+        <div class="dops-flow__b">boleto interno<br>× contraparte</div>
+      </div>
+      <div class="dops-flow__arrow" aria-hidden="true">→</div>
+      <div class="dops-flow__box dops-flow__box--check">
+        <div class="dops-flow__h">3 · LIQUIDAÇÃO</div>
+        <div class="dops-flow__b">DVP na B3<br>ou no Selic</div>
+      </div>
+      <div class="dops-flow__arrow" aria-hidden="true">→</div>
+      <div class="dops-flow__box dops-flow__box--dst">
+        <div class="dops-flow__h">4 · CONCILIAÇÃO</div>
+        <div class="dops-flow__b">interno × custódia<br>caixa × extrato</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo">
+    <div class="demo__lbl">PAINEL DO DIA (ATUALIZA COM O QUE VOCÊ RESOLVER NAS SEÇÕES ABAIXO)</div>
+    <div class="bi-mockup">
+      <div class="bi-head">
+        <div class="bi-title">PONTE DTVM · MESA DE CRÉDITO — RESUMO</div>
+        <div class="bi-date">D0 · 28/04/2026</div>
+      </div>
+      <div class="bi-kpis">
+        <div class="bi-kpi">
+          <div class="bi-kpi__lbl">NEGÓCIOS NO BLOTTER</div>
+          <div class="bi-kpi__val" id="dtvm-kpi-negocios">—</div>
+          <div class="bi-kpi__delta" id="dtvm-kpi-negocios-d">—</div>
+        </div>
+        <div class="bi-kpi">
+          <div class="bi-kpi__lbl">VOLUME (AS DUAS PONTAS)</div>
+          <div class="bi-kpi__val" id="dtvm-kpi-volume">—</div>
+          <div class="bi-kpi__delta" id="dtvm-kpi-volume-d">—</div>
+        </div>
+        <div class="bi-kpi">
+          <div class="bi-kpi__lbl">SPREAD DA MESA</div>
+          <div class="bi-kpi__val t-up" id="dtvm-kpi-spread">—</div>
+          <div class="bi-kpi__delta" id="dtvm-kpi-spread-d">—</div>
+        </div>
+        <div class="bi-kpi">
+          <div class="bi-kpi__lbl">EXCEÇÕES EM ABERTO</div>
+          <div class="bi-kpi__val" id="dtvm-kpi-exc">—</div>
+          <div class="bi-kpi__delta" id="dtvm-kpi-exc-d">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="card__num">=</div>
+      <div class="card__lbl">OPERAÇÃO CASADA</div>
+      <ul class="card__list">
+        <li>compra e venda do mesmo ativo</li>
+        <li>mesma quantidade, mesma data</li>
+        <li>risco de mercado ≈ zero</li>
+        <li>receita = spread entre as pontas</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card__num">½</div>
+      <div class="card__lbl">PERNA ABERTA</div>
+      <ul class="card__list">
+        <li>a mesa comprou e ainda não vendeu</li>
+        <li>o papel fica na carteira da DTVM</li>
+        <li>vira risco de mercado próprio</li>
+        <li>o objetivo é casar até o fim do dia</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card__num">↺</div>
+      <div class="card__lbl">ESTOQUE</div>
+      <ul class="card__list">
+        <li>carteira própria pequena</li>
+        <li>permite vender sem esperar vendedor</li>
+        <li>recebe juros e amortizações</li>
+        <li>entra na conciliação todo dia</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 09:00 BLOTTER ========== -->
+<section class="section" id="dtvm-blotter">
+  <div class="section__head">
+    <div class="section__num">01</div>
+    <div class="section__time">09:00</div>
+    <div class="section__kind">BLOTTER DA MESA · NEGÓCIOS DO DIA</div>
+  </div>
+  <h2 class="section__title">Cada linha do blotter é uma promessa que o backoffice precisa cumprir.</h2>
+
+  <div class="problem">
+    <div class="problem__lbl">A DOR REAL</div>
+    <p>
+      O operador fecha o negócio por telefone ou chat e lança o <strong>boleto</strong>: ativo,
+      lado, contraparte, quantidade, taxa, PU e data de liquidação. A partir daí, cada linha vira
+      uma obrigação de entregar título ou dinheiro numa data certa. No crédito privado o negócio é
+      cotado em <strong>taxa</strong>, não em preço: o PU sai da taxa (seção das 11:00), e o
+      financeiro é PU × quantidade. Um bp errado na taxa já muda o financeiro.
+    </p>
+  </div>
+
+  <div class="demo">
+    <div class="demo__lbl">DEMONSTRAÇÃO · BLOTTER DE D0 (DADOS SIMULADOS, SEMENTE FIXA)</div>
+    <div class="bi-mockup">
+      <div class="bi-head">
+        <div class="bi-title">PONTE DTVM · BLOTTER — CRÉDITO PRIVADO</div>
+        <div class="bi-date">D0 · 28/04/2026 · 18 negócios</div>
+      </div>
+      <div class="dtvm-chips" role="group" aria-label="Filtrar o blotter">
+        <button type="button" class="dtvm-chip" data-filtro="todos" aria-pressed="true">Todos</button>
+        <button type="button" class="dtvm-chip" data-filtro="casadas" aria-pressed="false">Casadas</button>
+        <button type="button" class="dtvm-chip" data-filtro="avulsas" aria-pressed="false">Avulsas</button>
+        <button type="button" class="dtvm-chip" data-filtro="d0" aria-pressed="false">Liquida D+0</button>
+        <button type="button" class="dtvm-chip" data-filtro="d1" aria-pressed="false">Liquida D+1</button>
+      </div>
+      <div class="dtvm-scroll">
+        <table class="dtvm-table dtvm-table--blotter">
+          <thead>
+            <tr><th>ID · hora</th><th>Ativo</th><th>C/V</th><th>Contraparte</th>
+                <th class="num">Qtd</th><th class="num">Taxa</th><th class="num">PU</th>
+                <th class="num">Financeiro</th><th>Liq.</th></tr>
+          </thead>
+          <tbody id="dtvm-blotter-tbody"><!-- preenchido por JS --></tbody>
+        </table>
+      </div>
+      <div class="bi-row">
+        <div class="bi-card bi-card--full">
+          <div class="bi-card__title">OPERAÇÕES CASADAS · SPREAD POR PAR</div>
+          <div class="dtvm-scroll">
+            <table class="dtvm-table">
+              <thead>
+                <tr><th>Ativo</th><th>Comprou de</th><th>Vendeu a</th>
+                    <th class="num">Taxa compra</th><th class="num">Taxa venda</th>
+                    <th class="num">Δ taxa</th><th class="num">Spread (R$)</th></tr>
+              </thead>
+              <tbody id="dtvm-pares-tbody"><!-- preenchido por JS --></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legend">
+      <span class="legend-item legend-item--ok">C · a DTVM compra da contraparte</span>
+      <span class="legend-item legend-item--div">V · a DTVM vende à contraparte</span>
+      <span class="legend-item legend-item--falt">passe o mouse num negócio casado: o par acende</span>
+    </div>
+  </div>
+
+  <div class="how">
+    <div class="how__lbl">COMO O BACKOFFICE LÊ O BLOTTER</div>
+    <ol class="steps">
+      <li>Na compra a mesa paga taxa maior (PU menor); na venda, taxa menor (PU maior). A diferença × quantidade é o spread</li>
+      <li>As duas pernas de um par precisam ter a mesma quantidade e a mesma data de liquidação. Se não tiverem, não é casada</li>
+      <li>Negócio avulso é aplicação de caixa, venda de estoque ou perna aberta. Perna aberta vira posição da DTVM até ser casada</li>
+      <li>Negócio fechado depois do horário de corte vai para D+1: muda a data, muda o caixa de amanhã</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ========== 10:00 CONFIRMAÇÃO ========== -->
+<section class="section" id="dtvm-confirmacao">
+  <div class="section__head">
+    <div class="section__num">02</div>
+    <div class="section__time">10:00</div>
+    <div class="section__kind">CONFIRMAÇÃO COM A CONTRAPARTE</div>
+  </div>
+  <h2 class="section__title">Boleto interno × confirmação da contraparte, campo a campo.</h2>
+
+  <div class="problem">
+    <div class="problem__lbl">A DOR REAL</div>
+    <p>
+      Depois do telefone, as duas pontas trocam a confirmação por escrito. O backoffice compara
+      <strong>PU, quantidade e data de liquidação</strong> do boleto com o que a contraparte
+      mandou. Se um campo não bate, o negócio não segue: na B3 as duas partes lançam a operação,
+      e lançamentos que não casam não liquidam. Divergência descoberta de manhã é um e-mail;
+      descoberta depois da janela é uma falha.
+    </p>
+  </div>
+
+  <div class="tool" id="tool-dtvm-conf">
+    <div class="tool__head">
+      <span class="tool__badge">⚙ FERRAMENTA INTERATIVA</span>
+      <span class="tool__name">Mesa de confirmação</span>
+      <button type="button" class="tool__reset" id="dtvm-conf-reset">⟲ reset</button>
+    </div>
+    <div class="tool__body">
+      <p class="tool__intro">
+        Os 18 negócios do dia com a confirmação recebida de cada contraparte. Campos que não batem
+        ficam <strong>em vermelho</strong>. Abaixo da tabela estão as pendências: trate cada uma e
+        veja o status, o painel do topo e o relatório das 18:00 mudarem.
+      </p>
+      <div class="dtvm-resumo" id="dtvm-conf-resumo" aria-live="polite"><!-- JS --></div>
+      <div class="excel-mockup">
+        <div class="dtvm-scroll">
+          <table class="dtvm-table dtvm-table--conf">
+            <thead>
+              <tr><th>Negócio</th><th>Contraparte</th>
+                  <th class="num">PU boleto</th><th class="num">PU contrap.</th>
+                  <th class="num">Qtd boleto</th><th class="num">Qtd contrap.</th>
+                  <th>Liq. boleto</th><th>Liq. contrap.</th><th>Status</th></tr>
+            </thead>
+            <tbody id="dtvm-conf-tbody"><!-- JS --></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="legend">
+        <span class="legend-item legend-item--ok">CONFIRMADA · os três campos batem</span>
+        <span class="legend-item legend-item--div">DIVERGENTE · algum campo difere</span>
+        <span class="legend-item legend-item--falt">PENDENTE · a contraparte ainda não respondeu</span>
+      </div>
+      <div class="dtvm-pend" id="dtvm-conf-pend"><!-- JS --></div>
+    </div>
+  </div>
+
+  <div class="errors">
+    <div class="err">
+      <div class="err__h">PU diferente</div>
+      <div class="err__b">Quase sempre é a taxa: um dígito trocado, ou a contraparte calculou com outra data de liquidação. Manda-se a memória de cálculo do PU.</div>
+    </div>
+    <div class="err">
+      <div class="err__h">Quantidade diferente</div>
+      <div class="err__b">Ruído de telefone ("dois mil" × "dois e quinhentos"). A gravação ou o chat da mesa decide quem está certo.</div>
+    </div>
+    <div class="err">
+      <div class="err__h">Data diferente</div>
+      <div class="err__b">Negócio fechado perto do horário de corte: um lado entendeu D+0, o outro D+1. Erro caro, porque muda o caixa de dois dias.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 11:00 CALCULADORA DE PU ========== -->
+<section class="section" id="dtvm-pu">
+  <div class="section__head">
+    <div class="section__num">03</div>
+    <div class="section__time">11:00</div>
+    <div class="section__kind">CALCULADORA DE PU · BASE 252</div>
+  </div>
+  <h2 class="section__title">Taxa sobe, PU cai. Sempre.</h2>
+
+  <div class="problem">
+    <div class="problem__lbl">POR QUE O BACKOFFICE RECALCULA</div>
+    <p>
+      O PU é a soma dos fluxos futuros (juros e amortizações) trazidos a valor presente pela taxa
+      negociada, contando <strong>dias úteis base 252</strong>. Se a taxa sobe, cada fluxo é
+      descontado mais e o PU cai. Conferir o PU de cada boleto é como o backoffice pega erro de
+      taxa antes da contraparte.
+    </p>
+  </div>
+
+  <div class="tool" id="tool-dtvm-pu">
+    <div class="tool__head">
+      <span class="tool__badge">⚙ FERRAMENTA INTERATIVA</span>
+      <span class="tool__name">Calculadora de PU</span>
+    </div>
+    <div class="tool__body">
+      <p class="tool__intro">
+        Carregue um negócio do blotter para conferir o PU do boleto, ou preencha à mão.
+        Tudo recalcula enquanto você digita. Taxas em % (vírgula ou ponto).
+      </p>
+
+      <div class="tool__form">
+        <label class="tool__field dtvm-field--wide">
+          <span class="tool__lbl">Carregar negócio do blotter</span>
+          <select id="dtvm-pu-negocio" class="tool__input"><!-- JS --></select>
+        </label>
+      </div>
+      <div class="tool__form">
+        <label class="tool__field">
+          <span class="tool__lbl">Indexador</span>
+          <select id="dtvm-pu-idx" class="tool__input">
+            <option value="pre">Prefixado</option>
+            <option value="ipca">IPCA +</option>
+            <option value="cdi_mais">CDI + (spread)</option>
+            <option value="pct_cdi">% do CDI</option>
+          </select>
+        </label>
+        <label class="tool__field">
+          <span class="tool__lbl" id="dtvm-pu-taxa-lbl">Taxa de mercado (% a.a.)</span>
+          <input type="text" id="dtvm-pu-taxa" class="tool__input" inputmode="decimal">
+        </label>
+        <label class="tool__field">
+          <span class="tool__lbl" id="dtvm-pu-emissao-lbl">Taxa de emissão (% a.a.)</span>
+          <input type="text" id="dtvm-pu-emissao" class="tool__input" inputmode="decimal">
+        </label>
+      </div>
+      <div class="tool__form">
+        <label class="tool__field">
+          <span class="tool__lbl">Pagamento de juros</span>
+          <select id="dtvm-pu-per" class="tool__input">
+            <option value="0">No vencimento</option>
+            <option value="12">Anual</option>
+            <option value="6">Semestral</option>
+            <option value="1">Mensal</option>
+          </select>
+        </label>
+        <label class="tool__field">
+          <span class="tool__lbl">Emissão</span>
+          <input type="date" id="dtvm-pu-emis" class="tool__input">
+        </label>
+        <label class="tool__field">
+          <span class="tool__lbl">Liquidação</span>
+          <input type="date" id="dtvm-pu-liq" class="tool__input">
+        </label>
+        <label class="tool__field">
+          <span class="tool__lbl">Vencimento</span>
+          <input type="date" id="dtvm-pu-venc" class="tool__input">
+        </label>
+      </div>
+      <div class="tool__form">
+        <label class="tool__field">
+          <span class="tool__lbl" id="dtvm-pu-base-lbl">Valor nominal (R$)</span>
+          <input type="text" id="dtvm-pu-base" class="tool__input" inputmode="decimal">
+        </label>
+        <label class="tool__field" id="dtvm-pu-fator-wrap">
+          <span class="tool__lbl">Fator DI acumulado no período</span>
+          <input type="text" id="dtvm-pu-fator" class="tool__input" inputmode="decimal">
+        </label>
+        <label class="tool__field" id="dtvm-pu-cdi-wrap">
+          <span class="tool__lbl">CDI projetado (% a.a.)</span>
+          <input type="text" id="dtvm-pu-cdi" class="tool__input" inputmode="decimal">
+        </label>
+      </div>
+      <p class="dtvm-nota" id="dtvm-pu-amort"></p>
+
+      <div class="tool__result">
+        <div class="dops-res">
+          <div class="dops-res__block dops-res__block--accent">
+            <div class="dops-res__lbl">PU (TRUNCADO, 6 CASAS)</div>
+            <div class="dops-res__val" id="dtvm-pu-res">—</div>
+          </div>
+          <div class="dops-res__block">
+            <div class="dops-res__lbl" id="dtvm-pu-par-lbl">PU PAR · ÁGIO/DESÁGIO</div>
+            <div class="dops-res__val" id="dtvm-pu-par">—</div>
+          </div>
+          <div class="dops-res__block">
+            <div class="dops-res__lbl">DURATION · DIAS ÚTEIS</div>
+            <div class="dops-res__val" id="dtvm-pu-dur">—</div>
+          </div>
+        </div>
+        <div class="dops-verdict" id="dtvm-pu-nota"></div>
+
+        <div class="dtvm-pu-grid">
+          <div>
+            <div class="dtvm-sub">SENSIBILIDADE · MESMO ATIVO, OUTRA TAXA</div>
+            <table class="dtvm-table">
+              <thead><tr><th>Choque</th><th class="num">Taxa</th><th class="num">PU</th><th class="num">Δ PU</th></tr></thead>
+              <tbody id="dtvm-pu-sens"><!-- JS --></tbody>
+            </table>
+          </div>
+          <div>
+            <div class="dtvm-sub">PU × TAXA <span class="dtvm-sub__meta">passe o mouse na curva</span></div>
+            <svg viewBox="0 0 360 200" class="dtvm-curva" id="dtvm-pu-svg" role="img" aria-label="Curva decrescente do PU em função da taxa"></svg>
+          </div>
+        </div>
+
+        <details class="dtvm-details">
+          <summary>Ver o fluxo de pagamentos e a conta de cada linha</summary>
+          <div class="dtvm-scroll">
+            <table class="dtvm-table">
+              <thead><tr><th>Pagamento</th><th class="num">du</th><th class="num">Saldo</th>
+                  <th class="num">Juros (R$)</th><th class="num">Amortização (R$)</th>
+                  <th class="num">Fluxo p/ preço</th><th class="num">Fator de desconto</th><th class="num">Valor presente</th></tr></thead>
+              <tbody id="dtvm-pu-fluxos"><!-- JS --></tbody>
+            </table>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <div class="solution">
+    <div class="solution__lbl">A CONTA, EM UMA LINHA</div>
+    <p>
+      <strong>PU = Σ fluxo<sub>i</sub> ÷ fator(taxa, du<sub>i</sub>)</strong>, com
+      fator = (1 + taxa)<sup>du/252</sup> em pré, IPCA+ e CDI+, e
+      (1 + %CDI × CDI diário)<sup>du</sup> em %CDI. Em IPCA+ os fluxos são calculados sobre o
+      VNA (valor nominal atualizado pela inflação). Em CDI+, por convenção de mercado, o CDI
+      projetado e o desconto pelo CDI se cancelam, e o PU sai do spread aplicado sobre
+      VNe × fator DI acumulado. Em %CDI os juros são projetados com o CDI projetado, que é uma
+      premissa da simulação.
+    </p>
+  </div>
+</section>
+
+<!-- ========== 14:00 LIQUIDAÇÃO ========== -->
+<section class="section" id="dtvm-liquidacao">
+  <div class="section__head">
+    <div class="section__num">04</div>
+    <div class="section__time">14:00</div>
+    <div class="section__kind">LIQUIDAÇÃO · B3 BALCÃO E SELIC</div>
+  </div>
+  <h2 class="section__title">DVP protege cada perna. Não protege a operação casada.</h2>
+
+  <div class="problem">
+    <div class="problem__lbl">A DOR REAL</div>
+    <p>
+      Debênture, CRI, CRA e LF liquidam na <strong>B3, ambiente de balcão</strong>; título público
+      liquida no <strong>Selic</strong>. Nos dois a liquidação é
+      <span class="dtvm-tip">
+        <button type="button" class="dtvm-tip__btn" aria-describedby="dtvm-tip-dvp">DVP <span aria-hidden="true">ⓘ</span></button>
+        <span class="dtvm-tip__box" role="tooltip" id="dtvm-tip-dvp">
+          <strong>Delivery versus Payment</strong> (entrega contra pagamento): o título só muda de
+          dono se o dinheiro mudar ao mesmo tempo, de forma irrevogável. Se um lado falha, nada
+          acontece. Ninguém entrega o título sem receber, nem paga sem receber o título.
+        </span>
+      </span>,
+      então cada perna é segura sozinha. O problema é o par: se a compra liquida e a venda falha,
+      a DTVM pagou o vendedor, não recebeu do comprador e dorme com o papel e o buraco no caixa.
+    </p>
+  </div>
+
+  <div class="demo">
+    <div class="demo__lbl">DEMONSTRAÇÃO · PAINEL DE LIQUIDAÇÃO POR CÂMARA</div>
+    <div class="bi-mockup">
+      <div class="bi-head">
+        <div class="bi-title">PONTE DTVM · LIQUIDAÇÃO</div>
+        <div class="bi-date">D0 · 28/04/2026 · após a última janela</div>
+      </div>
+      <div class="bi-row">
+        <div class="bi-card bi-card--full">
+          <div class="bi-card__title">B3 · BALCÃO <span class="dtvm-sub__meta">debêntures, CRI, CRA, LF · modalidade bruta</span></div>
+          <div class="dtvm-camara-resumo" id="dtvm-liq-b3-resumo"></div>
+          <div class="dtvm-scroll">
+            <table class="dtvm-table">
+              <thead><tr><th>Negócio</th><th>C/V</th><th>Contraparte</th><th class="num">Financeiro</th><th>Data</th><th>Confirmação</th><th>Status</th></tr></thead>
+              <tbody id="dtvm-liq-b3"><!-- JS --></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="bi-row">
+        <div class="bi-card bi-card--full">
+          <div class="bi-card__title">SELIC <span class="dtvm-sub__meta">títulos públicos · liquidação bruta em tempo real</span></div>
+          <div class="dtvm-camara-resumo" id="dtvm-liq-selic-resumo"></div>
+          <div class="dtvm-scroll">
+            <table class="dtvm-table">
+              <thead><tr><th>Negócio</th><th>C/V</th><th>Contraparte</th><th class="num">Financeiro</th><th>Data</th><th>Confirmação</th><th>Status</th></tr></thead>
+              <tbody id="dtvm-liq-selic"><!-- JS --></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tool" id="tool-dtvm-falha">
+    <div class="tool__head">
+      <span class="tool__badge">⚙ FERRAMENTA INTERATIVA</span>
+      <span class="tool__name">Tratamento da falha</span>
+      <button type="button" class="tool__reset" id="dtvm-falha-reset">⟲ reset</button>
+    </div>
+    <div class="tool__body">
+      <p class="tool__intro" id="dtvm-falha-intro"><!-- JS --></p>
+      <ol class="dtvm-passos" id="dtvm-falha-passos"><!-- JS --></ol>
+      <div class="dtvm-log" id="dtvm-falha-log" aria-live="polite"><!-- JS --></div>
+    </div>
+  </div>
+
+  <div class="errors">
+    <div class="err">
+      <div class="err__h">Buraco no caixa</div>
+      <div class="err__b">A compra saiu da conta e a venda não entrou. A DTVM precisa financiar esse valor até a nova data: custo de um dia de CDI, no mínimo.</div>
+    </div>
+    <div class="err">
+      <div class="err__h">Risco de mercado sem querer</div>
+      <div class="err__b">A operação era casada, mas o papel ficou na carteira própria. Se a taxa abrir amanhã, a perda é da DTVM.</div>
+    </div>
+    <div class="err">
+      <div class="err__h">Erro que se espalha</div>
+      <div class="err__b">Se o sistema interno baixou a venda como liquidada, posição e caixa internos ficam errados. A conciliação das 17:00 vai acusar.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 17:00 CONCILIAÇÃO ========== -->
+<section class="section" id="dtvm-conciliacao">
+  <div class="section__head">
+    <div class="section__num">05</div>
+    <div class="section__time">17:00</div>
+    <div class="section__kind">CONCILIAÇÃO DE FIM DE DIA</div>
+  </div>
+  <h2 class="section__title">O sistema interno precisa concordar com a B3, o Selic e o banco.</h2>
+
+  <div class="problem">
+    <div class="problem__lbl">A DOR REAL</div>
+    <p>
+      No fim do dia o backoffice compara duas visões que deveriam ser iguais. A
+      <strong>posição interna</strong> de cada ativo contra a <strong>custódia</strong> na B3 e no
+      Selic, e o <strong>caixa interno</strong> contra o <strong>extrato</strong> da conta de
+      liquidação. Qualquer diferença vira exceção com dono e prazo. Quem está certo quase sempre é
+      a câmara e o banco: o trabalho é achar o que o sistema interno não registrou.
+    </p>
+  </div>
+
+  <div class="tool" id="tool-dtvm-conc">
+    <div class="tool__head">
+      <span class="tool__badge">⚙ FERRAMENTA INTERATIVA</span>
+      <span class="tool__name">Conciliação automática</span>
+      <button type="button" class="tool__reset" id="dtvm-conc-reset">⟲ reset</button>
+    </div>
+    <div class="tool__body">
+      <p class="tool__intro">
+        As diferenças são apontadas sozinhas. Trate as exceções abaixo das tabelas e veja os saldos
+        baterem. A falha da seção das 14:00 também aparece aqui: resolva lá e volte.
+      </p>
+      <div class="dtvm-resumo" id="dtvm-conc-resumo" aria-live="polite"><!-- JS --></div>
+
+      <div class="dtvm-sub">POSIÇÃO · INTERNO × CUSTÓDIA (CARTEIRA PRÓPRIA)</div>
+      <div class="excel-mockup">
+        <div class="dtvm-scroll">
+          <table class="dtvm-table">
+            <thead><tr><th>Ativo</th><th>Câmara</th><th class="num">Estoque D-1</th><th class="num">Interno</th><th class="num">Custódia</th><th class="num">Diferença</th><th>Status</th></tr></thead>
+            <tbody id="dtvm-conc-pos"><!-- JS --></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="dtvm-sub">CAIXA · INTERNO × EXTRATO DA CONTA DE LIQUIDAÇÃO</div>
+      <div class="excel-mockup">
+        <div class="dtvm-scroll">
+          <table class="dtvm-table">
+            <thead><tr><th>Lançamento</th><th class="num">Interno (R$)</th><th class="num">Extrato (R$)</th><th class="num">Diferença (R$)</th><th>Status</th></tr></thead>
+            <tbody id="dtvm-conc-caixa"><!-- JS --></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="dtvm-pend" id="dtvm-conc-exc"><!-- JS --></div>
+    </div>
+  </div>
+
+  <div class="how">
+    <div class="how__lbl">A ORDEM DE INVESTIGAÇÃO</div>
+    <ol class="steps">
+      <li>Diferença de posição e de caixa no mesmo ativo, no mesmo dia: é um único evento visto pelos dois lados</li>
+      <li>Diferença só no caixa, valor pequeno e redondo: tarifa ou emolumento ainda não provisionado</li>
+      <li>Operações casadas zeram a posição: se um ativo casado sobra, alguma perna não liquidou</li>
+      <li>Nenhuma exceção vai embora sem registro de causa, ação e responsável</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ========== 17:30 AGENDA DE EVENTOS ========== -->
+<section class="section" id="dtvm-agenda">
+  <div class="section__head">
+    <div class="section__num">06</div>
+    <div class="section__time">17:30</div>
+    <div class="section__kind">AGENDA DE EVENTOS · PRÓXIMOS 30 DIAS</div>
+  </div>
+  <h2 class="section__title">Quem é titular na véspera recebe o cupom.</h2>
+
+  <div class="problem">
+    <div class="problem__lbl">A DOR REAL</div>
+    <p>
+      Juros, amortizações e vencimentos são pagos pela B3 e pelo Selic a quem é titular no
+      <strong>fim do dia útil anterior</strong> ao pagamento. Isso muda três coisas: o caixa que
+      vai entrar, o PU (que cai pelo valor do evento quando ele é pago) e quem tem direito ao fluxo
+      num negócio que liquida perto da data. A agenda sai do mesmo cronograma que precifica os
+      papéis na calculadora.
+    </p>
+  </div>
+
+  <div class="demo">
+    <div class="demo__lbl">EVENTOS DE 28/04 A 28/05/2026 · VALORES ESTIMADOS</div>
+    <div class="dtvm-scroll">
+      <table class="ref-table dtvm-table">
+        <thead>
+          <tr><th>Pagamento</th><th>Data com</th><th>Ativo</th><th>Evento</th>
+              <th class="num">R$ por unidade</th><th class="num">Posição hoje</th>
+              <th class="num">Após D+1</th><th class="num">A receber (est.)</th></tr>
+        </thead>
+        <tbody id="dtvm-agenda-tbody"><!-- JS --></tbody>
+      </table>
+    </div>
+    <p class="dtvm-nota" id="dtvm-agenda-nota"></p>
+  </div>
+</section>
+
+<!-- ========== 18:00 RELATÓRIO GERENCIAL ========== -->
+<section class="section" id="dtvm-relatorio">
+  <div class="section__head">
+    <div class="section__num">07</div>
+    <div class="section__time">18:00</div>
+    <div class="section__kind">RELATÓRIO GERENCIAL</div>
+  </div>
+  <h2 class="section__title">O relatório que o diretor lê antes de ir embora.</h2>
+
+  <div class="prose">
+    <p>
+      Uma página: quanto a mesa girou, com quem, quanto ganhou e o que ficou em aberto. As
+      exceções vêm ao vivo das seções anteriores. Exporte para levar ao comitê ou abrir no Excel.
+    </p>
+  </div>
+
+  <div class="demo">
+    <div class="demo__lbl">DEMONSTRAÇÃO · RELATÓRIO DO DIA</div>
+    <div class="bi-mockup">
+      <div class="bi-head">
+        <div class="bi-title">PONTE DTVM · RELATÓRIO GERENCIAL</div>
+        <div class="bi-date">D0 · 28/04/2026 · 18:00</div>
+      </div>
+      <div class="bi-kpis">
+        <div class="bi-kpi">
+          <div class="bi-kpi__lbl">VOLUME DO DIA</div>
+          <div class="bi-kpi__val" id="dtvm-rel-volume">—</div>
+          <div class="bi-kpi__delta" id="dtvm-rel-volume-d">—</div>
+        </div>
+        <div class="bi-kpi">
+          <div class="bi-kpi__lbl">SPREAD TOTAL DA MESA</div>
+          <div class="bi-kpi__val t-up" id="dtvm-rel-spread">—</div>
+          <div class="bi-kpi__delta" id="dtvm-rel-spread-d">—</div>
+        </div>
+        <div class="bi-kpi">
+          <div class="bi-kpi__lbl">EXCEÇÕES EM ABERTO</div>
+          <div class="bi-kpi__val" id="dtvm-rel-exc">—</div>
+          <div class="bi-kpi__delta" id="dtvm-rel-exc-d">—</div>
+        </div>
+      </div>
+      <div class="bi-row">
+        <div class="bi-card">
+          <div class="bi-card__title">VOLUME POR PRODUTO (R$ MI)</div>
+          <div id="dtvm-rel-produto"><!-- JS --></div>
+        </div>
+        <div class="bi-card">
+          <div class="bi-card__title">VOLUME POR TIPO DE CONTRAPARTE (R$ MI)</div>
+          <div id="dtvm-rel-tipo"><!-- JS --></div>
+        </div>
+      </div>
+      <div class="bi-row">
+        <div class="bi-card bi-card--full">
+          <div class="bi-card__title">VOLUME POR CONTRAPARTE</div>
+          <div class="dtvm-scroll">
+            <table class="dtvm-table">
+              <thead><tr><th>Contraparte</th><th>Tipo</th><th class="num">Negócios</th><th class="num">Comprou da DTVM</th><th class="num">Vendeu à DTVM</th><th class="num">Volume</th></tr></thead>
+              <tbody id="dtvm-rel-cp"><!-- JS --></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="bi-row">
+        <div class="bi-card bi-card--full">
+          <div class="bi-card__title">EXCEÇÕES EM ABERTO</div>
+          <div class="dtvm-scroll">
+            <table class="dtvm-table">
+              <thead><tr><th>Origem</th><th>Negócio / item</th><th>Descrição</th><th>Próxima ação</th></tr></thead>
+              <tbody id="dtvm-rel-exc-tbody"><!-- JS --></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="dtvm-export">
+      <button type="button" class="tool__btn" id="dtvm-exp-xlsx">Baixar relatório (.xlsx)</button>
+      <button type="button" class="tool__btn tool__btn--secondary" id="dtvm-exp-csv">Baixar blotter (.csv)</button>
+      <span class="dtvm-nota">O .xlsx tem 5 abas: resumo, blotter, por produto, por contraparte e exceções.</span>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>
+      Na gestora, o backoffice garante que a cota está certa. Na DTVM, garante que cada promessa da
+      mesa virou título e dinheiro no lugar certo. O spread é a receita; a confirmação, a
+      liquidação e a conciliação são o que impede que ele vire prejuízo.
+    </p>
+  </div>
+
+  <div class="hero__cta">
+    <a href="#tes-liquidacao" class="cta cta--primary" data-tab-link="tesouraria">Ver a liquidação pelo lado da tesouraria →</a>
+    <a href="#conciliacao" class="cta cta--ghost" data-tab-link="diario">Ver a conciliação de custódia da gestora →</a>
+  </div>
+</section>
+
+</div><!-- /tab-dtvm -->
+
 <!-- ========== SOBRE — VERSÃO COMPLETA ========== -->
 <section class="about-full" id="sobre">
   <div class="about-full__head">
@@ -3249,6 +3978,6 @@ print(<span class="c-str">f"[ok] {len(df)} preços carregados em fato_preco"</sp
 
 </main>
 
-<script src="script.js?v=6"></script>
+<script src="script.js?v=7"></script>
 </body>
 </html>

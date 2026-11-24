@@ -950,6 +950,7 @@
     broker:  document.getElementById('tab-broker'),
     dataops: document.getElementById('tab-dataops'),
     tesouraria: document.getElementById('tab-tesouraria'),
+    dtvm:    document.getElementById('tab-dtvm'),
   };
 
   // Dado um id de âncora, descobre em qual tab o alvo vive
@@ -2815,5 +2816,1291 @@
   renderMargem();
   renderFx();
   renderLadder();
+
+})();
+
+// ============================================================
+// DTVM·OPS — mesa de crédito privado (intermediação, mercado secundário)
+// Quarta camada: a DTVM não gere carteira, intermedia. Cada negócio do
+// blotter é acompanhado até a liquidação e a conciliação.
+// Dados fictícios e determinísticos: o gerador usa semente fixa, então a
+// tela é igual a cada carga; o que é interativo recalcula ao vivo.
+// ============================================================
+
+(function() {
+  'use strict';
+
+  if (!document.getElementById('tab-dtvm')) return;
+
+  const fmtBR = (n, d = 2) =>
+    n.toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const fmtR$ = n => 'R$ ' + fmtBR(n);
+  const fmtMi = n => 'R$ ' + fmtBR(n / 1e6, 2) + ' mi';
+  const fmtInt = n => fmtBR(n, 0);
+
+  // aceita "1.234,56" (BR), "1234.56" (US) e "1.000" (milhar BR)
+  function parseNumBR(s) {
+    s = String(s || '').trim();
+    if (!s) return NaN;
+    if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
+    else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
+    return parseFloat(s);
+  }
+
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const $ = id => document.getElementById(id);
+
+
+  /* ==== MOTOR (puro, sem DOM) — início ==== */
+
+  // ---------------------------------------------------------
+  // PREMISSAS DA SIMULAÇÃO
+  // ---------------------------------------------------------
+  const D0 = '2026-04-28';          // mesmo pregão simulado das outras abas
+  const CDI_PROJ = 0.1440;          // CDI projetado (flat, % a.a.) — premissa
+  const SEMENTE = 20260428;         // semente fixa: os mesmos dados a cada carga
+
+  // ---------------------------------------------------------
+  // CALENDÁRIO — dias úteis base 252 (feriados nacionais, padrão ANBIMA)
+  // Datas viram "número do dia" (dias desde 01/01/1970, em UTC) pra
+  // somar e comparar sem sustos de fuso horário.
+  // ---------------------------------------------------------
+  const dn = iso => {
+    const [y, m, d] = iso.split('-').map(Number);
+    return Date.UTC(y, m - 1, d) / 86400000;
+  };
+  const isoDe = n => new Date(n * 86400000).toISOString().slice(0, 10);
+  const brDe = n => { const s = isoDe(n); return s.slice(8, 10) + '/' + s.slice(5, 7) + '/' + s.slice(0, 4); };
+  const brCurto = n => brDe(n).slice(0, 5);
+  const anoDe = n => new Date(n * 86400000).getUTCFullYear();
+  const diaSemana = n => (n + 4) % 7; // 0 = domingo (01/01/1970 foi uma quinta)
+
+  // Páscoa pelo algoritmo anônimo gregoriano (Meeus/Jones/Butcher)
+  function pascoa(ano) {
+    const a = ano % 19, b = Math.floor(ano / 100), c = ano % 100;
+    const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
+    const g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+    const i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7;
+    const m = Math.floor((a + 11 * h + 22 * l) / 451);
+    const mes = Math.floor((h + l - 7 * m + 114) / 31);
+    const dia = ((h + l - 7 * m + 114) % 31) + 1;
+    return Date.UTC(ano, mes - 1, dia) / 86400000;
+  }
+
+  // Feriados nacionais do ano: fixos + móveis (Carnaval, Sexta-feira Santa,
+  // Corpus Christi). Calculados, não digitados — funciona pra qualquer ano.
+  const _cacheFeriados = {};
+  function feriados(ano) {
+    if (!_cacheFeriados[ano]) {
+      const fixos = ['01-01', '04-21', '05-01', '09-07', '10-12', '11-02', '11-15', '12-25'];
+      if (ano >= 2024) fixos.push('11-20'); // Consciência Negra (nacional desde 2024)
+      const s = new Set(fixos.map(md => dn(ano + '-' + md)));
+      const p = pascoa(ano);
+      [p - 48, p - 47, p - 2, p + 60].forEach(x => s.add(x));
+      _cacheFeriados[ano] = s;
+    }
+    return _cacheFeriados[ano];
+  }
+
+  function ehDiaUtil(n) {
+    const w = diaSemana(n);
+    return w !== 0 && w !== 6 && !feriados(anoDe(n)).has(n);
+  }
+  function proxDiaUtil(n) { while (!ehDiaUtil(n)) n++; return n; }
+  function diaUtilAnterior(n) { do { n--; } while (!ehDiaUtil(n)); return n; }
+  function somaDiasUteis(n, k) { while (k > 0) { n++; if (ehDiaUtil(n)) k--; } return n; }
+
+  // dias úteis de a (inclusive) até b (exclusive) — convenção ANBIMA
+  function du(a, b) {
+    let c = 0;
+    for (let x = a; x < b; x++) if (ehDiaUtil(x)) c++;
+    return c;
+  }
+
+  // soma meses mantendo o dia (dia 31 vira o último dia do mês, se preciso)
+  function somaMeses(n, meses) {
+    const d = new Date(n * 86400000);
+    const alvo = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + meses, 1));
+    const ultimo = new Date(Date.UTC(alvo.getUTCFullYear(), alvo.getUTCMonth() + 1, 0)).getUTCDate();
+    return Date.UTC(alvo.getUTCFullYear(), alvo.getUTCMonth(), Math.min(d.getUTCDate(), ultimo)) / 86400000;
+  }
+
+  // ---------------------------------------------------------
+  // CRONOGRAMA DE EVENTOS DE UM ATIVO
+  // Datas programadas saem do vencimento pra trás, de N em N meses.
+  // Evento em dia não útil é pago no dia útil seguinte. Só entram os
+  // eventos DEPOIS da liquidação: quem é titular no dia útil anterior ao
+  // pagamento é quem recebe, então pagamento na própria data da liquidação
+  // já é do vendedor.
+  // ---------------------------------------------------------
+  function cronograma(a, liq) {
+    const venc = dn(a.vencimento), emissao = dn(a.emissao);
+    const programadas = [venc];
+    if (a.periodicidade > 0) {
+      for (let k = 1; ; k++) {
+        const d = somaMeses(venc, -k * a.periodicidade);
+        if (d <= emissao) break;
+        programadas.unshift(d);
+      }
+    }
+    const amortPorData = {};
+    (a.amortizacoes || []).forEach(x => { amortPorData[dn(x.data)] = x.pct; });
+
+    let saldo = 1;           // fração do valor nominal de emissão ainda em aberto
+    let inicio = emissao;    // início do período de juros corrente
+    const futuros = [];
+    programadas.forEach(d => {
+      const pagamento = proxDiaUtil(d);
+      const pct = d === venc ? saldo : (amortPorData[d] || 0); // no vencimento, amortiza o que sobrou
+      if (pagamento <= liq) { saldo -= pct; inicio = d; return; } // já pago
+      futuros.push({
+        data: pagamento,
+        inicioPeriodo: inicio,
+        saldo,                                        // saldo ANTES do pagamento
+        amort: pct,
+        dp: du(proxDiaUtil(inicio), pagamento),       // dias úteis do período de juros
+        du: du(liq, pagamento),                       // dias úteis da liquidação ao pagamento
+      });
+      saldo -= pct;
+      inicio = d;
+    });
+    return futuros;
+  }
+
+  // ---------------------------------------------------------
+  // FATOR DE TAXA POR n DIAS ÚTEIS (base 252)
+  //   taxa ao ano (pré, IPCA+, CDI+): (1 + taxa)^(n/252)
+  //   % do CDI: (1 + p × CDI diário)^n, CDI diário = (1+CDI)^(1/252) − 1
+  // ---------------------------------------------------------
+  function fator(indexador, taxa, n, cdi) {
+    if (indexador === 'pct_cdi') {
+      const diDiario = Math.pow(1 + cdi, 1 / 252) - 1;
+      return Math.pow(1 + taxa * diDiario, n);
+    }
+    return Math.pow(1 + taxa, n / 252);
+  }
+
+  // ---------------------------------------------------------
+  // FLUXOS FUTUROS (por unidade)
+  // Cada fluxo tem duas leituras:
+  //   fluxoPreco → o que entra na conta do PU (convenção de mercado)
+  //   fluxoCaixa → o dinheiro projetado que cai na conta no dia
+  // Em pré, IPCA+ e %CDI as duas são iguais. Em CDI+ não: por convenção,
+  // o CDI projetado e o desconto pelo CDI se cancelam, e o PU é calculado
+  // só com o spread, sobre VNe × fator DI acumulado no período.
+  // ---------------------------------------------------------
+  function fluxosDoAtivo(a, liq, cdi = CDI_PROJ) {
+    const idx = a.indexador;
+    const base = idx === 'ipca' ? a.vna : a.vne;   // IPCA+: VNA atualizado; demais: VNe
+    const R = a.fatorAcum || 1;                     // fator DI já realizado no período corrente
+
+    return cronograma(a, liq).map((f, i) => {
+      // fator de juros do período pela taxa de emissão
+      const capEmissao = a.cupomFixo
+        ? Math.pow(1 + a.taxaEmissao, a.periodicidade / 12)   // ex.: NTN-B, 6% a.a. → 2,9563% por semestre
+        : fator(idx, a.taxaEmissao, f.dp, cdi);
+
+      let jurosPreco, jurosCaixa, amortPreco, amortCaixa;
+      if (idx === 'pre' || idx === 'ipca') {
+        jurosPreco = jurosCaixa = base * f.saldo * (capEmissao - 1);
+        amortPreco = amortCaixa = base * f.amort;
+      } else if (idx === 'cdi_mais') {
+        jurosPreco = base * R * f.saldo * (capEmissao - 1);
+        amortPreco = base * R * f.amort;
+        // caixa: DI realizado + projetado até o pagamento (1º período) ou o período inteiro
+        const diPeriodo = i === 0 ? R * Math.pow(1 + cdi, f.du / 252) : Math.pow(1 + cdi, f.dp / 252);
+        jurosCaixa = base * f.saldo * (diPeriodo * capEmissao - 1);
+        amortCaixa = base * f.amort;
+      } else { // pct_cdi — juros projetados com o CDI projetado
+        const cap = i === 0 ? R * fator(idx, a.taxaEmissao, f.du, cdi) : capEmissao;
+        jurosPreco = jurosCaixa = base * f.saldo * (cap - 1);
+        amortPreco = amortCaixa = base * f.amort;
+      }
+      return Object.assign({}, f, {
+        juros: jurosCaixa, amortValor: amortCaixa,
+        fluxoPreco: jurosPreco + amortPreco,
+        fluxoCaixa: jurosCaixa + amortCaixa,
+      });
+    });
+  }
+
+  // PU = soma dos fluxos trazidos a valor presente pela taxa de mercado.
+  // PU truncado em 6 casas (padrão de mercado); duration em anos (du/252).
+  const trunc6 = x => Math.floor(x * 1e6 + 1e-7) / 1e6;
+  function calcularPU(a, taxa, liq, cdi = CDI_PROJ, fluxos) {
+    fluxos = fluxos || fluxosDoAtivo(a, liq, cdi);
+    let pu = 0, prazoPonderado = 0;
+    const vps = fluxos.map(f => {
+      const vp = f.fluxoPreco / fator(a.indexador, taxa, f.du, cdi);
+      pu += vp;
+      prazoPonderado += vp * f.du / 252;
+      return vp;
+    });
+    return { pu: trunc6(pu), duration: pu > 0 ? prazoPonderado / pu : 0, fluxos, vps };
+  }
+
+  // ---------------------------------------------------------
+  // CADASTRO — ativos, contrapartes e estoque (tudo fictício)
+  // taxas em decimal: 0.0795 = 7,95% a.a.; %CDI: 1.04 = 104% do CDI
+  // ---------------------------------------------------------
+  const ATIVOS = {
+    ENERGIA:    { nome: 'Energia ABC 2032',      classe: 'Debênture', camara: 'B3', indexador: 'ipca',
+                  vne: 1000, vna: 1213.452700, taxaEmissao: 0.0685, periodicidade: 6,
+                  emissao: '2022-05-15', vencimento: '2032-05-15', taxaRef: 0.0795,
+                  amortizacoes: [{ data: '2031-05-15', pct: 0.5 }], lotes: [1000, 1500, 2000, 2500, 3000] },
+    RODOVIAS:   { nome: 'Rodovias Leste 2030',   classe: 'Debênture', camara: 'B3', indexador: 'cdi_mais',
+                  vne: 1000, fatorAcum: 1.064812, taxaEmissao: 0.0145, periodicidade: 6,
+                  emissao: '2025-05-12', vencimento: '2030-05-12', taxaRef: 0.0162,
+                  // 10 amortizações semestrais de 10% (a 1ª, de 12/11/2025, já foi paga)
+                  amortizacoes: Array.from({ length: 9 }, (_, k) => ({ data: isoDe(somaMeses(dn('2025-11-12'), 6 * k)), pct: 0.1 })),
+                  lotes: [2000, 3000, 4000, 5000] },
+    CRA_AGRO:   { nome: 'CRA Agro Norte 2029',   classe: 'CRA', camara: 'B3', indexador: 'pre',
+                  vne: 1000, taxaEmissao: 0.1340, periodicidade: 6,
+                  emissao: '2024-05-20', vencimento: '2029-05-20', taxaRef: 0.1410, lotes: [1500, 2000, 2500, 3000] },
+    CRI_LOG:    { nome: 'CRI Logística Sul 2030', classe: 'CRI', camara: 'B3', indexador: 'ipca',
+                  vne: 1000, vna: 1162.091500, taxaEmissao: 0.0760, periodicidade: 1,
+                  emissao: '2023-06-22', vencimento: '2030-06-22', taxaRef: 0.0835, lotes: [800, 1000, 1500, 2000] },
+    NTNB_2035:  { nome: 'NTN-B 2035',            classe: 'Título público', camara: 'Selic', indexador: 'ipca',
+                  vne: 1000, vna: 4612.374000, taxaEmissao: 0.06, cupomFixo: true, periodicidade: 6,
+                  emissao: '2015-01-15', vencimento: '2035-05-15', taxaRef: 0.0742, lotes: [300, 500, 800, 1000] },
+    LF_OMEGA:   { nome: 'LF Banco Ômega 2028',   classe: 'LF', camara: 'B3', indexador: 'pct_cdi',
+                  vne: 1000, fatorAcum: 1.247031, taxaEmissao: 1.04, periodicidade: 0,
+                  emissao: '2024-07-10', vencimento: '2028-07-10', taxaRef: 1.065, lotes: [1000, 1500, 2000] },
+    SANEAMENTO: { nome: 'Saneamento XYZ 2029',   classe: 'Debênture', camara: 'B3', indexador: 'cdi_mais',
+                  vne: 1000, fatorAcum: 1.067196, taxaEmissao: 0.0120, periodicidade: 6,
+                  emissao: '2024-11-05', vencimento: '2029-11-05', taxaRef: 0.0138,
+                  amortizacoes: [{ data: '2027-11-05', pct: 0.3333 }, { data: '2028-11-05', pct: 0.3333 }],
+                  lotes: [1000, 1500, 2000] },
+    TELECOM:    { nome: 'Telecom Sigma 2031',    classe: 'Debênture', camara: 'B3', indexador: 'ipca',
+                  vne: 1000, vna: 1093.221600, taxaEmissao: 0.0710, periodicidade: 12,
+                  emissao: '2024-05-25', vencimento: '2031-05-25', taxaRef: 0.0805, lotes: [1000, 1500, 2000] },
+    LFT_2029:   { nome: 'LFT 2029',              classe: 'Título público', camara: 'Selic', indexador: 'cdi_mais',
+                  rotuloIdx: 'Selic +', vne: 17842.336100, taxaEmissao: 0, periodicidade: 0,
+                  emissao: '2023-03-01', vencimento: '2029-03-01', taxaRef: 0.0005, lotes: [100, 150, 200] },
+    LF_PI:      { nome: 'LF Banco Pi 2026',      classe: 'LF', camara: 'B3', indexador: 'pct_cdi',
+                  vne: 1000, fatorAcum: 1.261284, taxaEmissao: 1.02, periodicidade: 0,
+                  emissao: '2024-05-18', vencimento: '2026-05-18', taxaRef: 1.02, lotes: [] },
+  };
+
+  const CONTRAPARTES = {
+    ALFA:      { nome: 'Fundo Crédito Alfa FIRF CP', tipo: 'Fundo' },
+    SIGMA:     { nome: 'Fundo Crédito Sigma FIRF CP', tipo: 'Fundo' },
+    DELTA:     { nome: 'Fundo Agro Delta FIAGRO',     tipo: 'Fundo' },
+    BETA:      { nome: 'FI-Infra Beta',               tipo: 'Fundo' },
+    ATLANTICA: { nome: 'Seguradora Atlântica',        tipo: 'Seguradora' },
+    BOREAL:    { nome: 'Seguradora Boreal',           tipo: 'Seguradora' },
+    HORIZONTE: { nome: 'Family Office Horizonte',     tipo: 'Family office' },
+    MONTE:     { nome: 'Family Office Monte Verde',   tipo: 'Family office' },
+    GAMA:      { nome: 'Previdência Gama',            tipo: 'Previdência' },
+    KAPPA:     { nome: 'Banco Kappa — tesouraria',    tipo: 'Banco' },
+  };
+
+  // carteira própria da DTVM no fechamento de D-1 (estoque pequeno: a mesa intermedia, não gere)
+  const ESTOQUE_D1 = { SANEAMENTO: 3000, LF_OMEGA: 1500, LF_PI: 800 };
+
+  // ---------------------------------------------------------
+  // GERAÇÃO DETERMINÍSTICA DO BLOTTER
+  // O ROTEIRO fixa o desenho do dia (quais pares, quem compra, quem vende,
+  // onde estão os problemas). O gerador pseudoaleatório com semente fixa
+  // preenche horários, quantidades, taxas e spreads — sempre os mesmos.
+  // ---------------------------------------------------------
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      let t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  // tipo 'par': a mesa compra de um e vende a outro (operação casada)
+  // tipo 'avulsa': uma perna só (aplicação de caixa, perna aberta ou venda de estoque)
+  // cenarios: marcações dos problemas do dia, aplicadas por perna
+  const ROTEIRO = [
+    { tipo: 'par', ativo: 'ENERGIA',    compra: 'ALFA',  venda: 'ATLANTICA', dLiq: 0, janela: ['09:02', '09:30'] },
+    { tipo: 'par', ativo: 'RODOVIAS',   compra: 'SIGMA', venda: 'HORIZONTE', dLiq: 0, janela: ['09:38', '10:05'] },
+    { tipo: 'par', ativo: 'CRA_AGRO',   compra: 'DELTA', venda: 'BOREAL',    dLiq: 0, janela: ['10:12', '10:40'],
+      cenarioVenda: { liquidacao: 'falha' } },
+    { tipo: 'par', ativo: 'CRI_LOG',    compra: 'MONTE', venda: 'GAMA',      dLiq: 0, janela: ['11:01', '11:30'] },
+    { tipo: 'avulsa', ativo: 'LFT_2029', lado: 'C', cp: 'KAPPA',             dLiq: 0, janela: ['12:05', '12:25'],
+      nota: 'aplicação do caixa próprio' },
+    { tipo: 'par', ativo: 'NTNB_2035',  compra: 'KAPPA', venda: 'GAMA',      dLiq: 0, janela: ['13:08', '13:35'] },
+    { tipo: 'par', ativo: 'LF_OMEGA',   compra: 'ALFA',  venda: 'HORIZONTE', dLiq: 1, janela: ['14:30', '14:55'],
+      cenarioVenda: { conf: 'qtd' } },
+    { tipo: 'par', ativo: 'SANEAMENTO', compra: 'BETA',  venda: 'ATLANTICA', dLiq: 1, janela: ['15:10', '15:40'],
+      cenarioCompra: { conf: 'pu' } },
+    { tipo: 'avulsa', ativo: 'TELECOM',  lado: 'C', cp: 'SIGMA',             dLiq: 1, janela: ['16:02', '16:15'],
+      nota: 'perna aberta — a mesa procura comprador', cenario: { conf: 'data' } },
+    { tipo: 'avulsa', ativo: 'LF_OMEGA', lado: 'V', cp: 'BOREAL',            dLiq: 1, janela: ['16:30', '16:36'],
+      nota: 'venda de estoque', lotes: [500, 800, 1000], cenario: { conf: 'pendente' } },
+    { tipo: 'avulsa', ativo: 'CRI_LOG',  lado: 'C', cp: 'ALFA',              dLiq: 1, janela: ['16:44', '16:52'],
+      nota: 'perna aberta — a mesa procura comprador', cenario: { conf: 'pendente' } },
+  ];
+
+  const minutos = hhmm => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; };
+  const hhmm = min => String(Math.floor(min / 60)).padStart(2, '0') + ':' + String(min % 60).padStart(2, '0');
+  const arred = (x, casas) => Math.round(x * Math.pow(10, casas)) / Math.pow(10, casas);
+
+  function gerarBlotter() {
+    const rnd = mulberry32(SEMENTE);
+    const escolhe = lista => lista[Math.floor(rnd() * lista.length)];
+    const entre = (a, b) => a + rnd() * (b - a);
+    const d0 = dn(D0);
+    const negocios = [];
+    let numPar = 0;
+
+    ROTEIRO.forEach(r => {
+      const a = ATIVOS[r.ativo];
+      const ehPct = a.indexador === 'pct_cdi';
+      const ehTpf = a.classe === 'Título público';
+      const liq = r.dLiq === 0 ? d0 : somaDiasUteis(d0, r.dLiq);
+      const qtd = escolhe(r.lotes || a.lotes);
+      // taxa "do meio" do dia: referência ± ruído (pct_cdi em pontos de %CDI)
+      const meio = a.taxaRef + (ehPct ? entre(-0.0025, 0.0025) : entre(-0.0003, 0.0003));
+      const t1 = Math.round(entre(minutos(r.janela[0]), minutos(r.janela[1])));
+
+      const perna = (lado, cp, taxa, min, cenario, extra) => {
+        const taxaArred = arred(taxa, ehPct ? 4 : 4);   // 4 casas em decimal = 0,01% (1 bp)
+        const pu = calcularPU(a, taxaArred, liq).pu;
+        return Object.assign({
+          ativoId: r.ativo, lado, cpId: cp, qtd, taxa: taxaArred, liq, dLiq: r.dLiq,
+          min, hora: hhmm(min), pu, financeiro: arred(pu * qtd, 2),
+          cenario: cenario || {}, nota: r.nota || '',
+        }, extra || {});
+      };
+
+      if (r.tipo === 'par') {
+        numPar++;
+        // meio-spread: a mesa compra acima da taxa do meio (PU menor) e vende abaixo (PU maior)
+        const meia = ehPct ? escolhe([0.0025, 0.005, 0.0075]) : (ehTpf ? escolhe([0.0001, 0.0002]) : escolhe([0.0002, 0.0003, 0.0004, 0.0005, 0.0006]));
+        const t2 = t1 + 3 + Math.floor(rnd() * 16);
+        negocios.push(perna('C', r.compra, meio + meia, t1, r.cenarioCompra, { par: numPar }));
+        negocios.push(perna('V', r.venda, meio - meia, t2, r.cenarioVenda, { par: numPar }));
+      } else {
+        negocios.push(perna(r.lado, r.cp, arred(meio, 4), t1, r.cenario, { par: null }));
+      }
+    });
+
+    negocios.sort((x, y) => x.min - y.min);
+    negocios.forEach((n, i) => { n.id = 'DTV-0428-' + String(i + 1).padStart(3, '0'); });
+    return negocios;
+  }
+
+  /* ==== MOTOR (puro, sem DOM) — fim ==== */
+
+
+  // ---------------------------------------------------------
+  // DADOS DO DIA
+  // ---------------------------------------------------------
+  const d0 = dn(D0);
+  const d1 = somaDiasUteis(d0, 1);
+  const NEGOCIOS = gerarBlotter();
+  const ativoDe = n => ATIVOS[n.ativoId];
+  const cpDe = n => CONTRAPARTES[n.cpId];
+
+  function fmtTaxa(a, t) {
+    if (a.indexador === 'pct_cdi') return fmtBR(t * 100, 2) + '% CDI';
+    const prefixo = a.rotuloIdx ? a.rotuloIdx + ' ' : ({ pre: '', ipca: 'IPCA + ', cdi_mais: 'CDI + ' }[a.indexador]);
+    return prefixo + fmtBR(t * 100, 2) + '%';
+  }
+  // diferença de taxa entre as pernas: bps (taxa ao ano) ou p.p. do CDI
+  function fmtDeltaTaxa(a, dt) {
+    return a.indexador === 'pct_cdi' ? fmtBR(dt * 100, 2) + ' p.p.' : fmtBR(dt * 10000, 0) + ' bps';
+  }
+
+  // pares casados: { numero: { C: negócio de compra, V: negócio de venda } }
+  const PARES = {};
+  NEGOCIOS.forEach(n => { if (n.par) (PARES[n.par] = PARES[n.par] || {})[n.lado] = n; });
+  const spreadDoPar = p => (p.V.pu - p.C.pu) * p.C.qtd;
+  const SPREAD_TOTAL = Object.values(PARES).reduce((s, p) => s + spreadDoPar(p), 0);
+  const VOLUME_TOTAL = NEGOCIOS.reduce((s, n) => s + n.financeiro, 0);
+  const VOLUME_CASADO = Object.values(PARES).reduce((s, p) => s + p.C.financeiro, 0);
+
+  // ---------------------------------------------------------
+  // CONFIRMAÇÕES DA CONTRAPARTE (com as divergências do roteiro)
+  // ---------------------------------------------------------
+  const CONFIRMACAO = {};
+  NEGOCIOS.forEach(n => {
+    const c = { pu: n.pu, qtd: n.qtd, liq: n.liq, tipo: n.cenario.conf || null };
+    if (c.tipo === 'pu') c.pu = calcularPU(ativoDe(n), n.taxa + 0.0001, n.liq).pu; // contraparte usou +1 bp
+    if (c.tipo === 'qtd') c.qtd = n.qtd + 500;
+    if (c.tipo === 'data') c.liq = d0;
+    if (c.tipo === 'pendente') c.pu = c.qtd = c.liq = null;
+    CONFIRMACAO[n.id] = c;
+  });
+
+  // texto de cada caso: o que aconteceu, o que fazer, como se resolveu
+  const CASOS_CONF = {
+    pu: n => ({
+      motivo: 'PU diverge: a contraparte calculou a ' + fmtTaxa(ativoDe(n), n.taxa + 0.0001) +
+              ' (boleto: ' + fmtTaxa(ativoDe(n), n.taxa) + '). Um bp muda o financeiro em ' +
+              fmtR$(Math.abs(n.pu - CONFIRMACAO[n.id].pu) * n.qtd) + '.',
+      acao: 'Enviar memória de cálculo do PU',
+      resolucao: 'A contraparte conferiu a memória de cálculo, reconheceu a taxa digitada errada e reenviou a confirmação com o PU do boleto.',
+    }),
+    qtd: n => ({
+      motivo: 'Quantidade diverge: a contraparte confirmou ' + fmtInt(CONFIRMACAO[n.id].qtd) +
+              ' (boleto: ' + fmtInt(n.qtd) + ').',
+      acao: 'Confrontar com a gravação da mesa',
+      resolucao: 'A gravação confirma ' + fmtInt(n.qtd) + ' unidades. A contraparte retificou a confirmação.',
+    }),
+    data: n => ({
+      motivo: 'Data diverge: a contraparte entendeu liquidação em ' + brDe(d0) + ' (boleto: ' + brDe(n.liq) +
+              '). Negócio das ' + n.hora + ', depois do horário de corte para D+0.',
+      acao: 'Reconfirmar o prazo com o operador',
+      resolucao: 'O operador da contraparte confirmou D+1 (' + brDe(n.liq) + '). Confirmação retificada.',
+    }),
+    pendente: n => ({
+      motivo: 'A contraparte ainda não mandou a confirmação (negócio das ' + n.hora + ', liquida em ' + brCurto(n.liq) + ').',
+      acao: 'Cobrar a confirmação',
+      resolucao: 'A contraparte enviou a confirmação. PU, quantidade e data conferem com o boleto.',
+    }),
+  };
+
+  // ---------------------------------------------------------
+  // EVENTOS DO DIA QUE A CONCILIAÇÃO VAI ENCONTRAR
+  // ---------------------------------------------------------
+  const FALHA = NEGOCIOS.find(n => n.cenario.liquidacao === 'falha');
+  const FALHA_PAR = PARES[FALHA.par].C;            // a perna que liquidou
+  const SALDO_INICIAL = 25000000;                  // conta de liquidação no banco liquidante
+  const TARIFA_B3 = -1284.37;                      // registro e custódia, debitado pela B3
+  // resgate antecipado parcial por sorteio, pago hoje: VNe × fator + juros do período + prêmio de 0,30%
+  const RESGATE = (() => {
+    const a = ATIVOS.SANEAMENTO;
+    const pu = trunc6(calcularPU(a, a.taxaEmissao, d0).pu * 1.003);
+    return { ativoId: 'SANEAMENTO', qtd: 50, pu, valor: arred(pu * 50, 2) };
+  })();
+
+  // ---------------------------------------------------------
+  // ESTADO — o que o usuário já resolveu
+  // ---------------------------------------------------------
+  const estado = {
+    confResolvida: {},                                    // id → true
+    falha: { contato: false, reagendado: false, incidente: false },
+    resgateLancado: false,
+    tarifaProvisionada: false,
+  };
+
+  function statusConf(n) {
+    const c = CONFIRMACAO[n.id];
+    if (!c.tipo || estado.confResolvida[n.id]) return 'confirmada';
+    return c.tipo === 'pendente' ? 'pendente' : 'divergente';
+  }
+  function statusLiq(n) {
+    if (n.liq > d0) return 'a_liquidar';
+    if (n === FALHA) return estado.falha.reagendado ? 'reagendada' : 'falha';
+    return 'liquidada';
+  }
+  // o sistema interno baixa a liquidação sozinho no horário previsto;
+  // só o tratamento da falha (reagendamento) estorna essa baixa
+  const liquidouNoInterno = n => statusLiq(n) === 'liquidada' || statusLiq(n) === 'falha';
+  const liquidouNaCamara = n => statusLiq(n) === 'liquidada';
+  const sinal = n => (n.lado === 'C' ? 1 : -1);
+
+  // ---------------------------------------------------------
+  // CONCILIAÇÃO — posição e caixa, interno × câmara/banco
+  // ---------------------------------------------------------
+  function conciliar() {
+    const doDia = NEGOCIOS.filter(n => n.liq === d0);
+    const ops = { total: doDia.length, conciliadas: doDia.filter(n => liquidouNoInterno(n) === liquidouNaCamara(n)).length };
+
+    const ids = Object.keys(ATIVOS).filter(id => ESTOQUE_D1[id] || doDia.some(n => n.ativoId === id));
+    const posicoes = ids.map(id => {
+      const estoque = ESTOQUE_D1[id] || 0;
+      const movInterno = doDia.filter(n => n.ativoId === id && liquidouNoInterno(n)).reduce((s, n) => s + sinal(n) * n.qtd, 0);
+      const movCamara = doDia.filter(n => n.ativoId === id && liquidouNaCamara(n)).reduce((s, n) => s + sinal(n) * n.qtd, 0);
+      const resgate = id === RESGATE.ativoId ? RESGATE.qtd : 0;
+      const interno = estoque + movInterno - (estado.resgateLancado ? resgate : 0);
+      const custodia = estoque + movCamara - resgate;
+      let causa = '';
+      if (interno !== custodia) causa = id === FALHA.ativoId ? 'reflexo da falha ' + FALHA.id : 'resgate antecipado não lançado';
+      return { id, camara: ATIVOS[id].camara, estoque, interno, custodia, dif: interno - custodia, causa };
+    });
+
+    const liquido = (camara, filtro) => arred(doDia.filter(n => ativoDe(n).camara === camara && filtro(n))
+      .reduce((s, n) => s - sinal(n) * n.financeiro, 0), 2);
+    const linhas = [
+      { desc: 'Saldo inicial da conta de liquidação', interno: SALDO_INICIAL, extrato: SALDO_INICIAL },
+      { desc: 'Liquidações B3 balcão (líquido do dia)', interno: liquido('B3', liquidouNoInterno), extrato: liquido('B3', liquidouNaCamara),
+        causa: 'reflexo da falha ' + FALHA.id },
+      { desc: 'Liquidações Selic (líquido do dia)', interno: liquido('Selic', liquidouNoInterno), extrato: liquido('Selic', liquidouNaCamara) },
+      { desc: 'Resgate antecipado Saneamento XYZ 2029 (' + RESGATE.qtd + ' un.)', interno: estado.resgateLancado ? RESGATE.valor : 0, extrato: RESGATE.valor,
+        causa: 'resgate antecipado não lançado' },
+      { desc: 'Tarifas B3 (registro e custódia)', interno: estado.tarifaProvisionada ? TARIFA_B3 : 0, extrato: TARIFA_B3,
+        causa: 'tarifa não provisionada' },
+    ];
+    const final = {
+      desc: 'Saldo final', total: true,
+      interno: arred(linhas.reduce((s, l) => s + l.interno, 0), 2),
+      extrato: arred(linhas.reduce((s, l) => s + l.extrato, 0), 2),
+    };
+    const caixa = linhas.concat([final]).map(l => Object.assign(l, { dif: arred(l.interno - l.extrato, 2) }));
+
+    const excecoes = [];
+    if (!estado.falha.reagendado) excecoes.push('falha');
+    if (!estado.resgateLancado) excecoes.push('resgate');
+    if (!estado.tarifaProvisionada) excecoes.push('tarifa');
+    return { ops, posicoes, caixa, excecoes };
+  }
+
+  // tudo que ainda está em aberto no dia (alimenta o topo e o relatório)
+  function excecoesEmAberto() {
+    const lista = [];
+    NEGOCIOS.forEach(n => {
+      const s = statusConf(n);
+      if (s === 'confirmada') return;
+      const caso = CASOS_CONF[CONFIRMACAO[n.id].tipo](n);
+      lista.push({ origem: 'Confirmação', item: n.id + ' · ' + ativoDe(n).nome, descricao: caso.motivo, acao: caso.acao });
+    });
+    if (!estado.falha.incidente) {
+      const proximo = !estado.falha.contato ? 'Contatar a contraparte'
+        : !estado.falha.reagendado ? 'Reagendar e estornar a baixa automática' : 'Registrar o incidente';
+      lista.push({ origem: 'Liquidação', item: FALHA.id + ' · ' + ativoDe(FALHA).nome,
+        descricao: estado.falha.reagendado ? 'Venda reagendada para ' + brCurto(d1) + '; incidente ainda não registrado.'
+                                            : 'Venda não liquidou na B3: a contraparte não lançou a contrapartida.',
+        acao: proximo });
+    }
+    if (!estado.resgateLancado) lista.push({ origem: 'Conciliação', item: 'Saneamento XYZ 2029',
+      descricao: 'Resgate antecipado parcial de ' + RESGATE.qtd + ' unidades pago pela B3 e não lançado no sistema.', acao: 'Lançar o evento no sistema' });
+    if (!estado.tarifaProvisionada) lista.push({ origem: 'Conciliação', item: 'Tarifas B3',
+      descricao: 'Débito de ' + fmtR$(-TARIFA_B3) + ' no extrato sem lançamento interno.', acao: 'Provisionar a tarifa' });
+    return lista;
+  }
+
+  // ---------------------------------------------------------
+  // CARIMBOS DE STATUS
+  // ---------------------------------------------------------
+  const STATUS = {
+    confirmada: ['ok', 'CONFIRMADA'], divergente: ['div', 'DIVERGENTE'], pendente: ['pend', 'PENDENTE'],
+    liquidada: ['ok', 'LIQUIDADA'], a_liquidar: ['pend', 'A LIQUIDAR'], falha: ['div', 'FALHA'],
+    reagendada: ['pend', 'REAGENDADA'], ok: ['ok', 'CONCILIADO'], div: ['div', 'DIFERENÇA'],
+    feito: ['ok', 'FEITO'],
+  };
+  const carimbo = chave => '<span class="dtvm-stamp dtvm-stamp--' + STATUS[chave][0] + '">' + STATUS[chave][1] + '</span>';
+  // segunda linha de uma célula, menor e apagada (ex.: hora sob o ID)
+  const dois = s => '<span class="dtvm-2l">' + esc(s) + '</span>';
+  const contagem = (rotulo, valor, tipo) =>
+    '<span class="dtvm-stamp dtvm-stamp--' + tipo + '">' + valor + ' ' + rotulo + '</span>';
+
+  // ---------------------------------------------------------
+  // 1 · BLOTTER
+  // ---------------------------------------------------------
+  let filtroBlotter = 'todos';
+  const FILTROS = {
+    todos: () => true, casadas: n => !!n.par, avulsas: n => !n.par,
+    d0: n => n.liq === d0, d1: n => n.liq > d0,
+  };
+
+  function renderBlotter() {
+    $('dtvm-blotter-tbody').innerHTML = NEGOCIOS.filter(FILTROS[filtroBlotter]).map(n => {
+      const a = ativoDe(n);
+      // duas linhas por célula (ID + hora/par, ativo + classe) pra caber PU e financeiro na tela
+      const sub = n.hora + ' · ' + (n.par ? 'par ' + n.par : 'avulsa');
+      return '<tr' + (n.par ? ' data-par="' + n.par + '" class="dtvm-par dtvm-par--' + (n.par % 2 ? 'a' : 'b') + '"' : '') + '>' +
+        '<td>' + n.id + dois(sub) + '</td>' +
+        '<td class="wrap"' + (n.nota ? ' title="' + esc(n.nota) + '"' : '') + '>' + esc(a.nome) + dois(a.classe + (n.nota ? ' · ' + n.nota.split(' — ')[0] : '')) + '</td>' +
+        '<td class="dtvm-lado dtvm-lado--' + n.lado + '">' + n.lado + '</td>' +
+        '<td class="wrap">' + esc(cpDe(n).nome) + '</td>' +
+        '<td class="num">' + fmtInt(n.qtd) + '</td><td class="num">' + fmtTaxa(a, n.taxa) + '</td>' +
+        '<td class="num">' + fmtBR(n.pu, 6) + '</td><td class="num">' + fmtBR(n.financeiro) + '</td>' +
+        '<td>D+' + n.dLiq + dois(brCurto(n.liq)) + '</td></tr>';
+    }).join('');
+  }
+
+  function renderPares() {
+    $('dtvm-pares-tbody').innerHTML = Object.keys(PARES).map(k => {
+      const p = PARES[k], a = ativoDe(p.C);
+      return '<tr data-par="' + k + '" class="dtvm-par dtvm-par--' + (k % 2 ? 'a' : 'b') + '"><td>' + esc(a.nome) + dois('par ' + k) + '</td>' +
+        '<td class="wrap">' + esc(cpDe(p.C).nome) + '</td><td class="wrap">' + esc(cpDe(p.V).nome) + '</td>' +
+        '<td class="num">' + fmtTaxa(a, p.C.taxa) + '</td><td class="num">' + fmtTaxa(a, p.V.taxa) + '</td>' +
+        '<td class="num">' + fmtDeltaTaxa(a, p.C.taxa - p.V.taxa) + '</td>' +
+        '<td class="num t-up">' + fmtBR(spreadDoPar(p)) + '</td></tr>';
+    }).join('') +
+      '<tr class="dtvm-total"><td colspan="6" class="wrap">SPREAD TOTAL DA MESA · ≈ ' + fmtBR(SPREAD_TOTAL / VOLUME_CASADO * 10000, 1) +
+      ' bps sobre ' + fmtMi(VOLUME_CASADO) + ' casados</td><td class="num">' + fmtBR(SPREAD_TOTAL) + '</td></tr>';
+  }
+
+  // passar o mouse numa perna acende as duas (vale pras duas tabelas)
+  ['dtvm-blotter-tbody', 'dtvm-pares-tbody'].forEach(id => {
+    const tb = $(id);
+    const acende = par => document.querySelectorAll('#tab-dtvm tr[data-par]').forEach(tr =>
+      tr.classList.toggle('dtvm-par--aceso', par !== null && tr.dataset.par === par));
+    tb.addEventListener('mouseover', e => { const tr = e.target.closest('tr[data-par]'); acende(tr ? tr.dataset.par : null); });
+    tb.addEventListener('mouseleave', () => acende(null));
+  });
+
+  document.querySelectorAll('#tab-dtvm .dtvm-chip').forEach(b => b.addEventListener('click', () => {
+    filtroBlotter = b.dataset.filtro;
+    document.querySelectorAll('#tab-dtvm .dtvm-chip').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+    renderBlotter();
+  }));
+
+  // ---------------------------------------------------------
+  // 2 · CONFIRMAÇÃO
+  // ---------------------------------------------------------
+  function renderConfirmacao() {
+    const cel = (valor, diverge) => '<td class="num' + (diverge ? ' dtvm-cel--div' : '') + '">' + valor + '</td>';
+    const celData = (valor, diverge) => '<td' + (diverge ? ' class="dtvm-cel--div"' : '') + '>' + valor + '</td>';
+
+    $('dtvm-conf-tbody').innerHTML = NEGOCIOS.map(n => {
+      const c = CONFIRMACAO[n.id], s = statusConf(n);
+      const resolvida = estado.confResolvida[n.id];
+      // depois de resolvida, a contraparte mandou os mesmos dados do boleto
+      const pu = resolvida ? n.pu : c.pu, qtd = resolvida ? n.qtd : c.qtd, liq = resolvida ? n.liq : c.liq;
+      const vazio = '<span class="dtvm-muted">aguardando</span>';
+      return '<tr><td>' + n.id + dois(ativoDe(n).nome) + '</td><td class="wrap">' + esc(cpDe(n).nome) + '</td>' +
+        '<td class="num">' + fmtBR(n.pu, 6) + '</td>' + cel(pu === null ? vazio : fmtBR(pu, 6), pu !== null && pu !== n.pu) +
+        '<td class="num">' + fmtInt(n.qtd) + '</td>' + cel(qtd === null ? vazio : fmtInt(qtd), qtd !== null && qtd !== n.qtd) +
+        '<td>' + brCurto(n.liq) + '</td>' + celData(liq === null ? vazio : brCurto(liq), liq !== null && liq !== n.liq) +
+        '<td>' + carimbo(s) + '</td></tr>';
+    }).join('');
+
+    const tot = { confirmada: 0, divergente: 0, pendente: 0 };
+    NEGOCIOS.forEach(n => tot[statusConf(n)]++);
+    $('dtvm-conf-resumo').innerHTML = contagem('confirmadas', tot.confirmada, 'ok') +
+      contagem('divergentes', tot.divergente, 'div') + contagem('pendentes', tot.pendente, 'pend');
+
+    const abertos = NEGOCIOS.filter(n => CONFIRMACAO[n.id].tipo);
+    $('dtvm-conf-pend').innerHTML = '<div class="dtvm-sub">PENDÊNCIAS DE CONFIRMAÇÃO</div>' + abertos.map(n => {
+      const caso = CASOS_CONF[CONFIRMACAO[n.id].tipo](n);
+      const feito = estado.confResolvida[n.id];
+      return '<div class="dtvm-item' + (feito ? ' dtvm-item--ok' : '') + '">' +
+        '<div class="dtvm-item__h">' + carimbo(statusConf(n)) + ' <strong>' + n.id + '</strong> · ' + esc(ativoDe(n).nome) + ' · ' + esc(cpDe(n).nome) + '</div>' +
+        '<div class="dtvm-item__b">' + esc(feito ? caso.resolucao : caso.motivo) + '</div>' +
+        (feito ? '' : '<button type="button" class="dtvm-acao" data-conf="' + n.id + '">' + caso.acao + ' →</button>') +
+        '</div>';
+    }).join('');
+  }
+
+  $('dtvm-conf-pend').addEventListener('click', e => {
+    const b = e.target.closest('[data-conf]');
+    if (!b) return;
+    estado.confResolvida[b.dataset.conf] = true;
+    atualizarTudo();
+  });
+  $('dtvm-conf-reset').addEventListener('click', () => { estado.confResolvida = {}; atualizarTudo(); });
+
+  // ---------------------------------------------------------
+  // 3 · CALCULADORA DE PU
+  // ---------------------------------------------------------
+  const calc = { negocio: null, amortizacoes: [], cupomFixo: false };
+  const campos = ['idx', 'taxa', 'emissao', 'per', 'emis', 'liq', 'venc', 'base', 'fator', 'cdi']
+    .reduce((o, k) => (o[k] = $('dtvm-pu-' + k), o), {});
+  const selNegocio = $('dtvm-pu-negocio');
+
+  selNegocio.innerHTML = '<option value="">— preencher à mão —</option>' + NEGOCIOS.map(n =>
+    '<option value="' + n.id + '">' + n.id + ' · ' + n.lado + ' · ' + esc(ativoDe(n).nome) + ' · ' + fmtTaxa(ativoDe(n), n.taxa) + ' · D+' + n.dLiq + '</option>').join('');
+
+  const pct = (x, casas = 2) => fmtBR(x * 100, casas);
+
+  function carregarNegocio(id) {
+    const n = NEGOCIOS.find(x => x.id === id);
+    if (!n) return;
+    const a = ativoDe(n);
+    calc.negocio = n;
+    calc.amortizacoes = a.amortizacoes || [];
+    calc.cupomFixo = !!a.cupomFixo;
+    campos.idx.value = a.indexador;
+    campos.taxa.value = pct(n.taxa);
+    campos.emissao.value = pct(a.taxaEmissao);
+    campos.per.value = String(a.periodicidade);
+    campos.emis.value = a.emissao;
+    campos.liq.value = isoDe(n.liq);
+    campos.venc.value = a.vencimento;
+    campos.base.value = fmtBR(a.indexador === 'ipca' ? a.vna : a.vne, 6);
+    campos.fator.value = fmtBR(a.fatorAcum || 1, 6);
+    campos.cdi.value = pct(CDI_PROJ);
+    selNegocio.value = id;
+    recalcularPU();
+  }
+
+  // campos que mudam a estrutura do papel desligam o vínculo com o negócio
+  ['idx', 'per', 'emis', 'venc'].forEach(k => campos[k].addEventListener('input', () => {
+    calc.negocio = null; calc.amortizacoes = []; calc.cupomFixo = false; selNegocio.value = '';
+    recalcularPU();
+  }));
+  ['taxa', 'emissao', 'liq', 'base', 'fator', 'cdi'].forEach(k => campos[k].addEventListener('input', recalcularPU));
+  selNegocio.addEventListener('change', () => {
+    if (selNegocio.value) carregarNegocio(selNegocio.value);
+    else { calc.negocio = null; recalcularPU(); }
+  });
+
+  function ajustarRotulos(idx) {
+    const ehPct = idx === 'pct_cdi';
+    $('dtvm-pu-taxa-lbl').textContent = ehPct ? 'Taxa de mercado (% do CDI)' : idx === 'cdi_mais' ? 'Spread de mercado (% a.a.)' : 'Taxa de mercado (% a.a.)';
+    $('dtvm-pu-emissao-lbl').textContent = ehPct ? 'Taxa de emissão (% do CDI)' : idx === 'cdi_mais' ? 'Spread de emissão (% a.a.)' : 'Taxa de emissão / cupom (% a.a.)';
+    $('dtvm-pu-base-lbl').textContent = idx === 'ipca' ? 'VNA atualizado pelo IPCA (R$)' : 'Valor nominal (R$)';
+    $('dtvm-pu-fator-wrap').hidden = !(idx === 'cdi_mais' || ehPct);
+    $('dtvm-pu-cdi-wrap').hidden = !ehPct;
+  }
+
+  function lerCalculadora() {
+    const idx = campos.idx.value;
+    const ehPct = idx === 'pct_cdi';
+    const taxa = parseNumBR(campos.taxa.value) / 100;
+    const emissao = parseNumBR(campos.emissao.value) / 100;
+    const base = parseNumBR(campos.base.value);
+    const fatorAcum = (idx === 'cdi_mais' || ehPct) ? parseNumBR(campos.fator.value) : 1;
+    const cdi = parseNumBR(campos.cdi.value) / 100;
+    const [emis, liq, venc] = [campos.emis.value, campos.liq.value, campos.venc.value];
+
+    let erro = '';
+    if (!(isFinite(taxa) && isFinite(emissao))) erro = 'Preencha a taxa de mercado e a taxa de emissão.';
+    else if (ehPct && !(taxa > 0 && emissao > 0)) erro = 'Em % do CDI, as taxas precisam ser maiores que zero.';
+    else if (!(base > 0)) erro = 'O valor nominal precisa ser maior que zero.';
+    else if (!(fatorAcum > 0)) erro = 'O fator DI acumulado precisa ser maior que zero (1 = período começando hoje).';
+    else if (ehPct && !(cdi > 0)) erro = 'Informe o CDI projetado.';
+    else if (!emis || !liq || !venc) erro = 'Preencha as três datas.';
+    else if (!(dn(emis) < dn(liq) && dn(liq) < dn(venc))) erro = 'As datas precisam estar em ordem: emissão < liquidação < vencimento.';
+    else if (!ehDiaUtil(dn(liq))) erro = 'A data de liquidação cai em fim de semana ou feriado. Liquidação só acontece em dia útil.';
+
+    const a = {
+      indexador: idx, vne: base, vna: base, fatorAcum, taxaEmissao: emissao,
+      periodicidade: Number(campos.per.value), emissao: emis, vencimento: venc,
+      amortizacoes: calc.amortizacoes, cupomFixo: calc.cupomFixo,
+    };
+    return { a, taxa, liq: liq ? dn(liq) : null, cdi: ehPct ? cdi : CDI_PROJ, erro };
+  }
+
+  // choques: ±50 e ±100 bps em taxa ao ano; ±2,5 e ±5 p.p. em % do CDI
+  const choques = idx => idx === 'pct_cdi'
+    ? [-0.05, -0.025, 0, 0.025, 0.05].map(c => ({ c, rot: (c > 0 ? '+' : c < 0 ? '−' : '') + fmtBR(Math.abs(c) * 100, 1) + ' p.p.' }))
+    : [-0.01, -0.005, 0, 0.005, 0.01].map(c => ({ c, rot: (c > 0 ? '+' : c < 0 ? '−' : '') + fmtBR(Math.abs(c) * 10000, 0) + ' bps' }));
+
+  function recalcularPU() {
+    const { a, taxa, liq, cdi, erro } = lerCalculadora();
+    ajustarRotulos(a.indexador);
+    const nota = $('dtvm-pu-nota');
+    $('dtvm-pu-amort').textContent = a.amortizacoes.length
+      ? 'Amortizações conforme a escritura do ativo carregado (' + a.amortizacoes.length + (a.amortizacoes.length === 1 ? ' parcela' : ' parcelas') + ' antes do vencimento' +
+        (a.cupomFixo ? '; cupom semestral fixo, como na NTN-B' : '') + '). Mudar indexador, periodicidade ou datas volta para amortização no vencimento.'
+      : (a.cupomFixo ? 'Cupom semestral fixo, como na NTN-B.' : 'Amortização integral no vencimento.');
+
+    const limpar = () => {
+      ['dtvm-pu-res', 'dtvm-pu-par', 'dtvm-pu-dur'].forEach(id => { $(id).textContent = '—'; });
+      $('dtvm-pu-sens').innerHTML = ''; $('dtvm-pu-fluxos').innerHTML = ''; $('dtvm-pu-svg').innerHTML = '';
+    };
+    if (erro) { limpar(); nota.className = 'dops-verdict dops-verdict--dn'; nota.textContent = '✗ ' + erro; return; }
+
+    const fluxos = fluxosDoAtivo(a, liq, cdi);
+    if (!fluxos.length) { limpar(); nota.className = 'dops-verdict dops-verdict--dn'; nota.textContent = '✗ Não há pagamento depois da liquidação.'; return; }
+
+    const r = calcularPU(a, taxa, liq, cdi, fluxos);
+    const par = calcularPU(a, a.taxaEmissao, liq, cdi, fluxos).pu;
+    const agio = r.pu / par - 1;
+    const duTotal = fluxos[fluxos.length - 1].du;
+
+    $('dtvm-pu-res').textContent = fmtBR(r.pu, 6);
+    $('dtvm-pu-par').textContent = fmtBR(par, 2) + ' · ' + (agio >= 0 ? '+' : '−') + fmtBR(Math.abs(agio) * 100, 2) + '%';
+    $('dtvm-pu-dur').textContent = fmtBR(r.duration, 2) + ' anos · ' + fmtInt(duTotal) + ' du';
+
+    // veredito: confere o boleto quando há negócio carregado
+    const n = calc.negocio;
+    if (n && Math.abs(taxa - n.taxa) < 1e-9 && liq === n.liq) {
+      const bate = Math.abs(r.pu - n.pu) < 1e-6;
+      nota.className = 'dops-verdict ' + (bate ? 'dops-verdict--up' : 'dops-verdict--dn');
+      nota.textContent = (bate ? '✓ Confere: ' : '✗ Não confere: ') + 'PU do boleto ' + n.id + ' = ' + fmtBR(n.pu, 6) +
+        ' · recalculado = ' + fmtBR(r.pu, 6) + '. Financeiro: ' + fmtInt(n.qtd) + ' × PU = ' + fmtR$(n.financeiro) + '.';
+    } else if (n) {
+      const dif = (r.pu - n.pu) * n.qtd;
+      nota.className = 'dops-verdict';
+      nota.textContent = 'Fora do boleto: a ' + fmtTaxa(a, taxa) + ' o PU vai a ' + fmtBR(r.pu, 6) + ' (' + (dif >= 0 ? '+' : '−') +
+        fmtBR(Math.abs(r.pu - n.pu), 6) + ' por unidade). No negócio ' + n.id + ', de ' + fmtInt(n.qtd) + ' unidades, o financeiro mudaria ' +
+        (dif >= 0 ? '+' : '−') + fmtR$(Math.abs(dif)) + '.';
+    } else {
+      nota.className = 'dops-verdict';
+      nota.textContent = Math.abs(agio) < 0.00005
+        ? 'Taxa de mercado igual à de emissão: o papel negocia no par.'
+        : taxa > a.taxaEmissao
+          ? 'Taxa de mercado acima da de emissão: o papel negocia com deságio, abaixo do par.'
+          : 'Taxa de mercado abaixo da de emissão: o papel negocia com ágio, acima do par.';
+    }
+
+    // sensibilidade
+    $('dtvm-pu-sens').innerHTML = choques(a.indexador).map(({ c, rot }) => {
+      const p = calcularPU(a, taxa + c, liq, cdi, fluxos).pu;
+      const delta = p / r.pu - 1;
+      return '<tr' + (c === 0 ? ' class="dtvm-total"' : '') + '><td>' + (c === 0 ? 'taxa atual' : rot) + '</td>' +
+        '<td class="num">' + fmtTaxa(a, taxa + c) + '</td><td class="num">' + fmtBR(p, 2) + '</td>' +
+        '<td class="num ' + (delta > 0 ? 't-up' : delta < 0 ? 't-dn' : '') + '">' + (c === 0 ? '—' : (delta > 0 ? '+' : '−') + fmtBR(Math.abs(delta) * 100, 2) + '%') + '</td></tr>';
+    }).join('');
+
+    desenharCurva(a, taxa, liq, cdi, fluxos, r.pu);
+
+    // fluxo de pagamentos
+    $('dtvm-pu-fluxos').innerHTML = fluxos.map((f, i) => {
+      const fat = fator(a.indexador, taxa, f.du, cdi);
+      return '<tr><td>' + brDe(f.data) + '</td><td class="num">' + fmtInt(f.du) + '</td><td class="num">' + fmtBR(f.saldo * 100, 2) + '%</td>' +
+        '<td class="num">' + fmtBR(f.juros, 6) + '</td><td class="num">' + fmtBR(f.amortValor, 6) + '</td>' +
+        '<td class="num">' + fmtBR(f.fluxoPreco, 6) + '</td><td class="num">' + fmtBR(fat, 8) + '</td><td class="num">' + fmtBR(r.vps[i], 6) + '</td></tr>';
+    }).join('') + '<tr class="dtvm-total"><td colspan="7">PU = soma dos valores presentes (truncado em 6 casas)</td><td class="num">' + fmtBR(r.pu, 6) + '</td></tr>';
+  }
+
+  // curva PU × taxa: uma série, linha de 2px, ponto na taxa atual, leitura no hover
+  function desenharCurva(a, taxa, liq, cdi, fluxos, puAtual) {
+    const svg = $('dtvm-pu-svg');
+    const W = 360, H = 200, E = 46, D = 12, T = 14, B = 30;
+    const amplitude = a.indexador === 'pct_cdi' ? 0.10 : 0.02;   // ±10 p.p. ou ±200 bps
+    const pts = [];
+    for (let k = 0; k <= 40; k++) {
+      const t = taxa - amplitude + (2 * amplitude * k) / 40;
+      pts.push({ t, pu: calcularPU(a, t, liq, cdi, fluxos).pu });
+    }
+    const minPU = Math.min(...pts.map(p => p.pu)), maxPU = Math.max(...pts.map(p => p.pu));
+    const x = t => E + ((t - (taxa - amplitude)) / (2 * amplitude)) * (W - E - D);
+    const y = pu => T + (1 - (pu - minPU) / (maxPU - minPU || 1)) * (H - T - B);
+    const mono = 'font-family="IBM Plex Mono, monospace" font-size="9"';
+
+    let s = '';
+    [minPU, (minPU + maxPU) / 2, maxPU].forEach(v => {
+      s += '<line x1="' + E + '" x2="' + (W - D) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="var(--line)" stroke-width="1"/>' +
+           '<text x="' + (E - 6) + '" y="' + (y(v) + 3) + '" text-anchor="end" ' + mono + ' fill="var(--fg-3)">' + fmtBR(v, 0) + '</text>';
+    });
+    [taxa - amplitude, taxa, taxa + amplitude].forEach(t => {
+      s += '<text x="' + x(t) + '" y="' + (H - 10) + '" text-anchor="middle" ' + mono + ' fill="var(--fg-3)">' + fmtTaxa(a, t) + '</text>';
+    });
+    s += '<path d="' + pts.map((p, i) => (i ? 'L' : 'M') + x(p.t).toFixed(1) + ' ' + y(p.pu).toFixed(1)).join(' ') +
+         '" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>';
+    s += '<circle cx="' + x(taxa) + '" cy="' + y(puAtual) + '" r="4.5" fill="var(--accent)" stroke="var(--bg-2)" stroke-width="2"/>';
+    s += '<g id="dtvm-curva-hover" visibility="hidden"><line y1="' + T + '" y2="' + (H - B) + '" stroke="var(--fg-3)" stroke-dasharray="3,3"/>' +
+         '<circle r="4" fill="var(--fg)"/><rect height="18" fill="var(--bg)" stroke="var(--line-2)"/><text ' + mono + ' fill="var(--fg)"></text></g>';
+    s += '<rect x="' + E + '" y="0" width="' + (W - E - D) + '" height="' + H + '" fill="transparent" id="dtvm-curva-alvo"/>';
+    svg.innerHTML = s;
+
+    const g = $('dtvm-curva-hover'), alvo = $('dtvm-curva-alvo');
+    alvo.addEventListener('mousemove', ev => {
+      const caixa = svg.getBoundingClientRect();
+      const px = (ev.clientX - caixa.left) * (W / caixa.width);
+      const p = pts.reduce((m, q) => Math.abs(x(q.t) - px) < Math.abs(x(m.t) - px) ? q : m, pts[0]);
+      const cx = x(p.t), cy = y(p.pu), texto = fmtTaxa(a, p.t) + ' → PU ' + fmtBR(p.pu, 2);
+      g.setAttribute('visibility', 'visible');
+      g.querySelector('line').setAttribute('x1', cx); g.querySelector('line').setAttribute('x2', cx);
+      g.querySelector('circle').setAttribute('cx', cx); g.querySelector('circle').setAttribute('cy', cy);
+      const larg = texto.length * 5.6 + 10, bx = Math.min(Math.max(cx - larg / 2, E), W - D - larg);
+      const r = g.querySelector('rect'); r.setAttribute('x', bx); r.setAttribute('y', T - 12); r.setAttribute('width', larg);
+      const t = g.querySelector('text'); t.setAttribute('x', bx + 5); t.setAttribute('y', T + 1); t.textContent = texto;
+    });
+    alvo.addEventListener('mouseleave', () => g.setAttribute('visibility', 'hidden'));
+  }
+
+  // ---------------------------------------------------------
+  // 4 · LIQUIDAÇÃO
+  // ---------------------------------------------------------
+  function renderLiquidacao() {
+    ['B3', 'Selic'].forEach(camara => {
+      const lista = NEGOCIOS.filter(n => ativoDe(n).camara === camara);
+      const id = camara === 'B3' ? 'dtvm-liq-b3' : 'dtvm-liq-selic';
+      $(id).innerHTML = lista.map(n => {
+        const s = statusLiq(n), sc = statusConf(n);
+        const obs = s === 'a_liquidar' && sc !== 'confirmada' ? ' <span class="dtvm-muted">· confirmar antes da janela</span>' : '';
+        return '<tr' + (s === 'falha' ? ' class="dtvm-linha--falha"' : '') + '><td>' + n.id + dois(ativoDe(n).nome) + '</td>' +
+          '<td class="dtvm-lado dtvm-lado--' + n.lado + '">' + n.lado + '</td><td class="wrap">' + esc(cpDe(n).nome) + '</td>' +
+          '<td class="num">' + fmtBR(n.financeiro) + '</td><td>' + brCurto(s === 'reagendada' ? d1 : n.liq) + '</td>' +
+          '<td>' + carimbo(sc) + '</td><td class="wrap">' + carimbo(s) + obs + '</td></tr>';
+      }).join('');
+      const conta = k => lista.filter(n => statusLiq(n) === k);
+      const soma = arr => fmtMi(arr.reduce((s, n) => s + n.financeiro, 0));
+      const liq = conta('liquidada'), al = conta('a_liquidar'), fa = conta('falha').concat(conta('reagendada'));
+      $(id + '-resumo').innerHTML = contagem('liquidadas · ' + soma(liq), liq.length, 'ok') +
+        contagem('a liquidar · ' + soma(al), al.length, 'pend') +
+        (fa.length ? contagem((estado.falha.reagendado ? 'falha tratada · ' : 'falha · ') + soma(fa), fa.length, estado.falha.reagendado ? 'pend' : 'div') : '');
+    });
+  }
+
+  // ---------------------------------------------------------
+  // 4b · TRATAMENTO DA FALHA — contato → reagendamento → incidente
+  // ---------------------------------------------------------
+  const custoOvernight = FALHA.financeiro * (Math.pow(1 + CDI_PROJ, 1 / 252) - 1);
+  const PASSOS = [
+    { chave: 'contato', titulo: 'Contato com a contraparte', botao: 'Ligar para o backoffice da ' + cpDe(FALHA).nome,
+      log: '14:52 · Contato com a ' + cpDe(FALHA).nome + ': a contraparte não lançou a contrapartida na B3 antes do horário-limite da janela. ' +
+           'Confirma o negócio e se compromete a liquidar em ' + brCurto(d1) + '.' },
+    { chave: 'reagendado', titulo: 'Reagendamento', botao: 'Reagendar para ' + brCurto(d1) + ' e estornar a baixa automática',
+      log: '15:05 · Liquidação reagendada para ' + brDe(d1) + ', com novo lançamento das duas partes na B3. Baixa automática estornada no sistema: ' +
+           'o ' + ativoDe(FALHA).nome + ' volta para a carteira própria e o recebimento sai do caixa de hoje.' },
+    { chave: 'incidente', titulo: 'Registro de incidente', botao: 'Registrar o incidente operacional',
+      log: '15:20 · Incidente INC-0428-01 registrado. Causa: falta de lançamento da contraparte. Impacto: ' + fmtR$(FALHA.financeiro) +
+           ' que não entraram no caixa por 1 dia útil (custo estimado de ' + fmtR$(custoOvernight) + ' a CDI) e ' + fmtInt(FALHA.qtd) +
+           ' ' + ativoDe(FALHA).nome + ' em carteira própria de um dia para o outro. Responsável: backoffice. Prazo: liquidação em ' + brCurto(d1) + '.' },
+  ];
+
+  function renderFalha() {
+    $('dtvm-falha-intro').innerHTML =
+      '<strong>' + FALHA.id + '</strong> · venda de ' + fmtInt(FALHA.qtd) + ' ' + esc(ativoDe(FALHA).nome) + ' à ' + esc(cpDe(FALHA).nome) +
+      ' · ' + fmtR$(FALHA.financeiro) + '. A compra casada (' + FALHA_PAR.id + ') liquidou: a DTVM já pagou ' + fmtR$(FALHA_PAR.financeiro) +
+      ' ao ' + esc(cpDe(FALHA_PAR).nome) + '. A venda falhou. Siga o tratamento na ordem.';
+    let liberado = true;
+    $('dtvm-falha-passos').innerHTML = PASSOS.map((p, i) => {
+      const feito = estado.falha[p.chave];
+      const html = '<li class="dtvm-passo' + (feito ? ' dtvm-passo--ok' : '') + '"><div class="dtvm-passo__n">' + (i + 1) + '</div>' +
+        '<div class="dtvm-passo__c"><div class="dtvm-passo__t">' + p.titulo + (feito ? ' ' + carimbo('feito') : '') + '</div>' +
+        (feito ? '' : '<button type="button" class="dtvm-acao" data-passo="' + p.chave + '"' + (liberado ? '' : ' disabled') + '>' + esc(p.botao) + ' →</button>') +
+        '</div></li>';
+      if (!feito) liberado = false;
+      return html;
+    }).join('');
+    const feitos = PASSOS.filter(p => estado.falha[p.chave]);
+    $('dtvm-falha-log').innerHTML = '<div class="dtvm-sub">LOG DO INCIDENTE</div>' +
+      (feitos.length ? feitos.map(p => '<div class="dtvm-log__l">' + esc(p.log) + '</div>').join('') : '<div class="dtvm-log__l dtvm-muted">nenhuma ação registrada</div>');
+  }
+
+  $('dtvm-falha-passos').addEventListener('click', e => {
+    const b = e.target.closest('[data-passo]');
+    if (!b || b.disabled) return;
+    estado.falha[b.dataset.passo] = true;
+    atualizarTudo();
+  });
+  $('dtvm-falha-reset').addEventListener('click', () => {
+    estado.falha = { contato: false, reagendado: false, incidente: false };
+    atualizarTudo();
+  });
+
+  // ---------------------------------------------------------
+  // 5 · CONCILIAÇÃO
+  // ---------------------------------------------------------
+  function renderConciliacao() {
+    const c = conciliar();
+    $('dtvm-conc-resumo').innerHTML =
+      contagem('operações liquidando hoje', c.ops.total, 'pend') +
+      contagem('conciliadas', c.ops.conciliadas, 'ok') +
+      contagem(c.excecoes.length === 1 ? 'exceção' : 'exceções', c.excecoes.length, c.excecoes.length ? 'div' : 'ok');
+
+    $('dtvm-conc-pos').innerHTML = c.posicoes.map(p =>
+      '<tr' + (p.dif ? ' class="dtvm-linha--falha"' : '') + '><td>' + esc(ATIVOS[p.id].nome) + '</td><td>' + p.camara + '</td>' +
+      '<td class="num">' + fmtInt(p.estoque) + '</td><td class="num">' + fmtInt(p.interno) + '</td><td class="num">' + fmtInt(p.custodia) + '</td>' +
+      '<td class="num' + (p.dif ? ' dtvm-cel--div' : '') + '">' + (p.dif ? (p.dif > 0 ? '+' : '−') + fmtInt(Math.abs(p.dif)) : '0') + '</td>' +
+      '<td class="wrap">' + carimbo(p.dif ? 'div' : 'ok') + (p.dif ? ' <span class="dtvm-muted">' + esc(p.causa) + '</span>' : '') + '</td></tr>').join('');
+
+    $('dtvm-conc-caixa').innerHTML = c.caixa.map(l =>
+      '<tr class="' + (l.total ? 'dtvm-total' : '') + (l.dif ? ' dtvm-linha--falha' : '') + '"><td class="wrap">' + esc(l.desc) + '</td>' +
+      '<td class="num">' + fmtBR(l.interno) + '</td><td class="num">' + fmtBR(l.extrato) + '</td>' +
+      '<td class="num' + (l.dif ? ' dtvm-cel--div' : '') + '">' + fmtBR(l.dif) + '</td>' +
+      '<td class="wrap">' + carimbo(l.dif ? 'div' : 'ok') + (l.dif && l.causa ? ' <span class="dtvm-muted">' + esc(l.causa) + '</span>' : '') + '</td></tr>').join('');
+
+    const itens = [
+      { chave: 'falha', aberto: !estado.falha.reagendado, titulo: 'Venda ' + FALHA.id + ' baixada como liquidada, mas a B3 não liquidou',
+        b: 'Aparece duas vezes: sobra ' + fmtInt(FALHA.qtd) + ' ' + ativoDe(FALHA).nome + ' na custódia e faltam ' + fmtR$(FALHA.financeiro) + ' no extrato. É a falha das 14:00, ainda sem tratamento.',
+        ok: 'A falha foi reagendada e a baixa automática estornada: interno, custódia e extrato voltaram a concordar.',
+        botao: 'Ir para o tratamento da falha', acao: 'ir-falha' },
+      { chave: 'resgate', aberto: !estado.resgateLancado, titulo: 'Resgate antecipado parcial da Saneamento XYZ 2029 não lançado',
+        b: 'A B3 baixou ' + RESGATE.qtd + ' unidades sorteadas da custódia e o banco creditou ' + fmtR$(RESGATE.valor) +
+           ' (PU de resgate ' + fmtBR(RESGATE.pu, 6) + ', com prêmio de 0,30%). O sistema interno não registrou o evento.',
+        ok: 'Evento lançado: ' + RESGATE.qtd + ' unidades baixadas e ' + fmtR$(RESGATE.valor) + ' creditados no caixa interno.',
+        botao: 'Lançar o evento no sistema', acao: 'resgate' },
+      { chave: 'tarifa', aberto: !estado.tarifaProvisionada, titulo: 'Débito de tarifa da B3 sem lançamento interno',
+        b: 'O extrato tem um débito de ' + fmtR$(-TARIFA_B3) + ' (registro e custódia) que ninguém provisionou.',
+        ok: 'Tarifa provisionada e lançada. O caixa interno bate com o extrato.',
+        botao: 'Provisionar a tarifa', acao: 'tarifa' },
+    ];
+    $('dtvm-conc-exc').innerHTML = '<div class="dtvm-sub">EXCEÇÕES</div>' + itens.map(it =>
+      '<div class="dtvm-item' + (it.aberto ? '' : ' dtvm-item--ok') + '"><div class="dtvm-item__h">' + carimbo(it.aberto ? 'div' : 'ok') +
+      ' <strong>' + esc(it.titulo) + '</strong></div><div class="dtvm-item__b">' + esc(it.aberto ? it.b : it.ok) + '</div>' +
+      (it.aberto ? '<button type="button" class="dtvm-acao" data-conc="' + it.acao + '">' + it.botao + ' →</button>' : '') + '</div>').join('');
+  }
+
+  $('dtvm-conc-exc').addEventListener('click', e => {
+    const b = e.target.closest('[data-conc]');
+    if (!b) return;
+    if (b.dataset.conc === 'ir-falha') {
+      $('tool-dtvm-falha').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    if (b.dataset.conc === 'resgate') estado.resgateLancado = true;
+    if (b.dataset.conc === 'tarifa') estado.tarifaProvisionada = true;
+    atualizarTudo();
+  });
+  $('dtvm-conc-reset').addEventListener('click', () => {
+    estado.resgateLancado = false; estado.tarifaProvisionada = false;
+    atualizarTudo();
+  });
+
+  // ---------------------------------------------------------
+  // 6 · AGENDA DE EVENTOS (próximos 30 dias corridos)
+  // ---------------------------------------------------------
+  function renderAgenda() {
+    const c = conciliar();
+    const custodia = id => { const p = c.posicoes.find(x => x.id === id); return p ? p.custodia : 0; };
+    // posição depois das liquidações de D+1 (e da venda reagendada, se a falha foi tratada)
+    const aposD1 = id => custodia(id) +
+      NEGOCIOS.filter(n => n.ativoId === id && n.liq === d1).reduce((s, n) => s + sinal(n) * n.qtd, 0) -
+      (id === FALHA.ativoId && estado.falha.reagendado ? FALHA.qtd : 0);
+
+    const linhas = [{
+      data: d0, ativoId: RESGATE.ativoId, evento: 'Resgate antecipado parcial (sorteio)', porUnidade: RESGATE.pu,
+      hoje: RESGATE.qtd + ' sorteadas', apos: '—', receber: RESGATE.valor, pago: true,
+    }];
+    Object.keys(ATIVOS).forEach(id => {
+      const a = ATIVOS[id];
+      fluxosDoAtivo(a, d0).filter(f => f.data <= d0 + 30).forEach(f => {
+        const ultimo = f.amort > 0 && Math.abs(f.saldo - f.amort) < 1e-9;
+        const evento = ultimo ? 'Vencimento (principal + juros)'
+          : f.amort > 0 ? 'Juros + amortização de ' + fmtBR(f.amort * 100, 2) + '%' : 'Juros';
+        const pos = aposD1(id);
+        linhas.push({ data: f.data, ativoId: id, evento, porUnidade: f.fluxoCaixa,
+          hoje: fmtInt(custodia(id)), apos: fmtInt(pos), receber: pos * f.fluxoCaixa });
+      });
+    });
+    linhas.sort((x, y) => x.data - y.data || ATIVOS[x.ativoId].nome.localeCompare(ATIVOS[y.ativoId].nome));
+
+    $('dtvm-agenda-tbody').innerHTML = linhas.map(l =>
+      '<tr' + (l.pago ? ' class="dtvm-total"' : '') + '><td>' + brCurto(l.data) + (l.pago ? ' · hoje' : '') + '</td>' +
+      '<td>' + (l.pago ? '—' : brCurto(diaUtilAnterior(l.data))) + '</td>' +
+      '<td class="wrap">' + esc(ATIVOS[l.ativoId].nome) + '</td><td class="wrap">' + l.evento + '</td>' +
+      '<td class="num">' + fmtBR(l.porUnidade, 6) + '</td><td class="num">' + l.hoje + '</td><td class="num">' + l.apos + '</td>' +
+      '<td class="num">' + (l.receber > 0 ? fmtBR(l.receber) + (l.pago ? ' <span class="dtvm-muted">creditado</span>' : '') : '<span class="dtvm-muted">—</span>') + '</td></tr>').join('');
+
+    $('dtvm-agenda-nota').textContent = 'Premissas: CDI projetado de ' + pct(CDI_PROJ) + '% a.a.; em IPCA+, VNA de hoje, sem projetar a inflação até o pagamento. ' +
+      '"Após D+1" já inclui as liquidações de ' + brCurto(d1) + (estado.falha.reagendado
+        ? ' e a venda reagendada do ' + ativoDe(FALHA).nome + '.'
+        : '. Enquanto a falha não for tratada, o ' + ativoDe(FALHA).nome + ' continua na carteira da DTVM.');
+  }
+
+  // ---------------------------------------------------------
+  // 7 · RELATÓRIO GERENCIAL
+  // ---------------------------------------------------------
+  function agrupar(chave) {
+    const g = {};
+    NEGOCIOS.forEach(n => {
+      const k = chave(n);
+      const x = g[k] = g[k] || { k, n: 0, volume: 0, compras: 0, vendas: 0 };
+      x.n++; x.volume += n.financeiro;
+      if (n.lado === 'V') x.compras += n.financeiro; else x.vendas += n.financeiro; // do ponto de vista da contraparte
+    });
+    return Object.values(g).sort((a, b) => b.volume - a.volume);
+  }
+  const porProduto = () => agrupar(n => ativoDe(n).classe);
+  const porTipo = () => agrupar(n => cpDe(n).tipo);
+  const porContraparte = () => agrupar(n => n.cpId);
+
+  function barras(grupos) {
+    const max = Math.max(...grupos.map(g => g.volume));
+    return grupos.map(g =>
+      '<div class="bi-bar" title="' + esc(g.k) + ': ' + fmtR$(g.volume) + ' em ' + g.n + ' negócio(s)">' +
+      '<span class="bi-bar__lbl">' + esc(g.k) + '</span>' +
+      '<span class="bi-bar__fill" style="width:' + (g.volume / max * 100).toFixed(1) + '%"></span>' +
+      '<span class="bi-bar__v">' + fmtBR(g.volume / 1e6, 1) + '</span></div>').join('');
+  }
+
+  function renderRelatorio() {
+    const exc = excecoesEmAberto();
+    $('dtvm-rel-volume').textContent = fmtMi(VOLUME_TOTAL);
+    $('dtvm-rel-volume-d').textContent = NEGOCIOS.length + ' negócios · ' + Object.keys(PARES).length + ' pares casados';
+    $('dtvm-rel-spread').textContent = fmtR$(SPREAD_TOTAL);
+    $('dtvm-rel-spread-d').textContent = '≈ ' + fmtBR(SPREAD_TOTAL / VOLUME_CASADO * 10000, 1) + ' bps sobre o volume casado';
+    $('dtvm-rel-exc').textContent = exc.length;
+    $('dtvm-rel-exc').className = 'bi-kpi__val ' + (exc.length ? 't-dn' : 't-up');
+    $('dtvm-rel-exc-d').textContent = exc.length ? 'resolva nas seções 02, 04 e 05' : 'dia fechado sem pendências';
+    $('dtvm-rel-produto').innerHTML = barras(porProduto());
+    $('dtvm-rel-tipo').innerHTML = barras(porTipo());
+    $('dtvm-rel-cp').innerHTML = porContraparte().map(g =>
+      '<tr><td class="wrap">' + esc(CONTRAPARTES[g.k].nome) + '</td><td>' + CONTRAPARTES[g.k].tipo + '</td><td class="num">' + g.n + '</td>' +
+      '<td class="num">' + fmtBR(g.compras) + '</td><td class="num">' + fmtBR(g.vendas) + '</td><td class="num">' + fmtBR(g.volume) + '</td></tr>').join('');
+    $('dtvm-rel-exc-tbody').innerHTML = exc.length ? exc.map(x =>
+      '<tr><td>' + x.origem + '</td><td class="wrap">' + esc(x.item) + '</td><td class="wrap">' + esc(x.descricao) + '</td><td class="wrap">' + esc(x.acao) + '</td></tr>').join('')
+      : '<tr><td colspan="4">' + carimbo('ok') + ' nenhuma exceção em aberto</td></tr>';
+  }
+
+  // painel do topo
+  function renderKPIs() {
+    const exc = excecoesEmAberto();
+    const casadas = NEGOCIOS.filter(n => n.par).length;
+    $('dtvm-kpi-negocios').textContent = NEGOCIOS.length;
+    $('dtvm-kpi-negocios-d').textContent = casadas + ' em pares casados · ' + (NEGOCIOS.length - casadas) + ' avulsos';
+    $('dtvm-kpi-volume').textContent = fmtMi(VOLUME_TOTAL);
+    $('dtvm-kpi-volume-d').textContent = NEGOCIOS.filter(n => n.liq === d0).length + ' liquidam hoje · ' + NEGOCIOS.filter(n => n.liq > d0).length + ' em ' + brCurto(d1);
+    $('dtvm-kpi-spread').textContent = fmtR$(SPREAD_TOTAL);
+    $('dtvm-kpi-spread-d').textContent = 'soma dos ' + Object.keys(PARES).length + ' pares casados';
+    $('dtvm-kpi-exc').textContent = exc.length;
+    $('dtvm-kpi-exc').className = 'bi-kpi__val ' + (exc.length ? 't-dn' : 't-up');
+    const porOrigem = o => exc.filter(x => x.origem === o).length;
+    $('dtvm-kpi-exc-d').textContent = exc.length
+      ? porOrigem('Confirmação') + ' confirmação · ' + porOrigem('Liquidação') + ' liquidação · ' + porOrigem('Conciliação') + ' conciliação'
+      : 'tudo confirmado, liquidado e conciliado';
+  }
+
+  // ---------------------------------------------------------
+  // EXPORTAÇÃO — .xlsx de verdade (zip + XML do Office) e .csv
+  // Sem biblioteca externa, mantendo o site 100% estático.
+  // ---------------------------------------------------------
+  const TABELA_CRC = (() => {
+    const t = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+      t[n] = c >>> 0;
+    }
+    return t;
+  })();
+  function crc32(bytes) {
+    let c = 0xFFFFFFFF;
+    for (let i = 0; i < bytes.length; i++) c = TABELA_CRC[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  // zip sem compressão ("store"): cabeçalho local + dados, depois o diretório central
+  function zipar(arquivos) {
+    const enc = new TextEncoder();
+    const partes = [], central = [];
+    let offset = 0;
+    arquivos.forEach(({ nome, conteudo }) => {
+      const nomeB = enc.encode(nome), dados = enc.encode(conteudo), crc = crc32(dados), n = dados.length;
+      const local = new DataView(new ArrayBuffer(30));
+      [[0, 0x04034b50, 4], [4, 20, 2], [6, 0x0800, 2], [8, 0, 2], [10, 0, 2], [12, 0x21, 2],
+       [14, crc, 4], [18, n, 4], [22, n, 4], [26, nomeB.length, 2], [28, 0, 2]]
+        .forEach(([p, v, t]) => t === 4 ? local.setUint32(p, v, true) : local.setUint16(p, v, true));
+      partes.push(new Uint8Array(local.buffer), nomeB, dados);
+      const cd = new DataView(new ArrayBuffer(46));
+      [[0, 0x02014b50, 4], [4, 20, 2], [6, 20, 2], [8, 0x0800, 2], [10, 0, 2], [12, 0, 2], [14, 0x21, 2],
+       [16, crc, 4], [20, n, 4], [24, n, 4], [28, nomeB.length, 2], [30, 0, 2], [32, 0, 2], [34, 0, 2],
+       [36, 0, 2], [38, 0, 4], [42, offset, 4]]
+        .forEach(([p, v, t]) => t === 4 ? cd.setUint32(p, v, true) : cd.setUint16(p, v, true));
+      central.push(new Uint8Array(cd.buffer), nomeB);
+      offset += 30 + nomeB.length + n;
+    });
+    const tamCentral = central.reduce((s, p) => s + p.length, 0);
+    const fim = new DataView(new ArrayBuffer(22));
+    [[0, 0x06054b50, 4], [4, 0, 2], [6, 0, 2], [8, arquivos.length, 2], [10, arquivos.length, 2],
+     [12, tamCentral, 4], [16, offset, 4], [20, 0, 2]]
+      .forEach(([p, v, t]) => t === 4 ? fim.setUint32(p, v, true) : fim.setUint16(p, v, true));
+    const todas = partes.concat(central, [new Uint8Array(fim.buffer)]);
+    const saida = new Uint8Array(todas.reduce((s, p) => s + p.length, 0));
+    let pos = 0;
+    todas.forEach(p => { saida.set(p, pos); pos += p.length; });
+    return saida;
+  }
+
+  const xml = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const colunaLetra = i => { let s = ''; for (i++; i > 0; i = Math.floor((i - 1) / 26)) s = String.fromCharCode(65 + (i - 1) % 26) + s; return s; };
+  // estilos: 0 padrão · 1 cabeçalho em negrito · 2 dinheiro · 3 PU (6 casas) · 4 inteiro · 5 taxa (4 casas)
+  const ESTILO = { cab: 1, rs: 2, pu: 3, int: 4, taxa: 5 };
+
+  // cada planilha: { nome, larguras: [..], linhas: [[célula, ...]] }
+  // célula: texto, número, ou { v: número, f: 'rs'|'pu'|'int'|'taxa' }, ou { t: texto, f: 'cab' }
+  function planilhaXml(p) {
+    const linhas = p.linhas.map((l, r) => '<row r="' + (r + 1) + '">' + l.map((c, i) => {
+      const ref = colunaLetra(i) + (r + 1);
+      if (c === null || c === undefined || c === '') return '';
+      if (typeof c === 'number') return '<c r="' + ref + '"><v>' + c + '</v></c>';
+      if (typeof c === 'object' && 'v' in c) return '<c r="' + ref + '" s="' + ESTILO[c.f] + '"><v>' + c.v + '</v></c>';
+      const texto = typeof c === 'object' ? c.t : c, s = typeof c === 'object' ? ' s="' + ESTILO[c.f] + '"' : '';
+      return '<c r="' + ref + '" t="inlineStr"' + s + '><is><t xml:space="preserve">' + xml(texto) + '</t></is></c>';
+    }).join('') + '</row>').join('');
+    const cols = '<cols>' + p.larguras.map((w, i) => '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + w + '" customWidth="1"/>').join('') + '</cols>';
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' + cols + '<sheetData>' + linhas + '</sheetData></worksheet>';
+  }
+
+  function montarXlsx(planilhas) {
+    const ns = 'http://schemas.openxmlformats.org';
+    const arquivos = [
+      { nome: '[Content_Types].xml', conteudo: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="' + ns + '/package/2006/content-types">' +
+        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>' +
+        '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+        '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
+        planilhas.map((_, i) => '<Override PartName="/xl/worksheets/sheet' + (i + 1) + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>').join('') + '</Types>' },
+      { nome: '_rels/.rels', conteudo: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="' + ns + '/package/2006/relationships">' +
+        '<Relationship Id="rId1" Type="' + ns + '/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>' },
+      { nome: 'xl/workbook.xml', conteudo: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="' + ns + '/spreadsheetml/2006/main" xmlns:r="' + ns + '/officeDocument/2006/relationships"><sheets>' +
+        planilhas.map((p, i) => '<sheet name="' + xml(p.nome) + '" sheetId="' + (i + 1) + '" r:id="rId' + (i + 1) + '"/>').join('') + '</sheets></workbook>' },
+      { nome: 'xl/_rels/workbook.xml.rels', conteudo: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="' + ns + '/package/2006/relationships">' +
+        planilhas.map((_, i) => '<Relationship Id="rId' + (i + 1) + '" Type="' + ns + '/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + (i + 1) + '.xml"/>').join('') +
+        '<Relationship Id="rId' + (planilhas.length + 1) + '" Type="' + ns + '/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>' },
+      { nome: 'xl/styles.xml', conteudo: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="' + ns + '/spreadsheetml/2006/main">' +
+        '<numFmts count="2"><numFmt numFmtId="164" formatCode="#,##0.000000"/><numFmt numFmtId="165" formatCode="0.0000"/></numFmts>' +
+        '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>' +
+        '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>' +
+        '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
+        '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+        '<cellXfs count="6"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
+        '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
+        '<xf numFmtId="4" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
+        '<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
+        '<xf numFmtId="3" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
+        '<xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs>' +
+        '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>' },
+    ].concat(planilhas.map((p, i) => ({ nome: 'xl/worksheets/sheet' + (i + 1) + '.xml', conteudo: planilhaXml(p) })));
+    return zipar(arquivos);
+  }
+
+  const cab = lista => lista.map(t => ({ t, f: 'cab' }));
+  const rs = v => ({ v: arred(v, 2), f: 'rs' });
+
+  function linhasBlotter() {
+    return NEGOCIOS.map(n => {
+      const a = ativoDe(n);
+      return [n.id, n.hora, a.nome, a.classe, a.indexador === 'pct_cdi' ? '% CDI' : (a.rotuloIdx || { pre: 'Prefixado', ipca: 'IPCA +', cdi_mais: 'CDI +' }[a.indexador]),
+        n.lado === 'C' ? 'Compra' : 'Venda', cpDe(n).nome, cpDe(n).tipo, { v: n.qtd, f: 'int' }, { v: arred(n.taxa * 100, 4), f: 'taxa' },
+        { v: n.pu, f: 'pu' }, rs(n.financeiro), brDe(n.liq), n.par ? 'par ' + n.par : 'avulsa',
+        STATUS[statusConf(n)][1], STATUS[statusLiq(n)][1]];
+    });
+  }
+  const CAB_BLOTTER = ['ID', 'Hora', 'Ativo', 'Classe', 'Indexador', 'Lado (DTVM)', 'Contraparte', 'Tipo de contraparte',
+    'Quantidade', 'Taxa (% a.a. ou % CDI)', 'PU', 'Financeiro (R$)', 'Liquidação', 'Par', 'Confirmação', 'Status de liquidação'];
+
+  function baixar(bytes, nome, tipo) {
+    const url = URL.createObjectURL(new Blob([bytes], { type: tipo }));
+    const a = document.createElement('a');
+    a.href = url; a.download = nome;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  $('dtvm-exp-xlsx').addEventListener('click', () => {
+    const exc = excecoesEmAberto();
+    const resumo = {
+      nome: 'Resumo', larguras: [46, 22], linhas: [
+        [{ t: 'Relatório gerencial — Ponte DTVM (fictícia) · mesa de crédito privado', f: 'cab' }],
+        ['Data de referência', brDe(d0)],
+        ['Negócios', NEGOCIOS.length],
+        ['Pares casados', Object.keys(PARES).length],
+        ['Volume do dia, as duas pontas (R$)', rs(VOLUME_TOTAL)],
+        ['Spread total da mesa (R$)', rs(SPREAD_TOTAL)],
+        ['Spread sobre o volume casado (bps)', { v: arred(SPREAD_TOTAL / VOLUME_CASADO * 10000, 2), f: 'taxa' }],
+        ['Exceções em aberto', exc.length],
+        [],
+        ['Dados simulados e determinísticos (semente ' + SEMENTE + '). CDI projetado: ' + pct(CDI_PROJ) + '% a.a.'],
+      ] };
+    const blotter = { nome: 'Blotter', larguras: [14, 7, 24, 15, 11, 12, 30, 16, 11, 12, 16, 17, 12, 8, 13, 18],
+      linhas: [cab(CAB_BLOTTER)].concat(linhasBlotter()) };
+    const produto = { nome: 'Por produto', larguras: [18, 11, 20],
+      linhas: [cab(['Produto', 'Negócios', 'Volume (R$)'])].concat(porProduto().map(g => [g.k, g.n, rs(g.volume)])) };
+    const contraparte = { nome: 'Por contraparte', larguras: [30, 15, 11, 20, 20, 20],
+      linhas: [cab(['Contraparte', 'Tipo', 'Negócios', 'Comprou da DTVM (R$)', 'Vendeu à DTVM (R$)', 'Volume (R$)'])]
+        .concat(porContraparte().map(g => [CONTRAPARTES[g.k].nome, CONTRAPARTES[g.k].tipo, g.n, rs(g.compras), rs(g.vendas), rs(g.volume)])) };
+    const excecoes = { nome: 'Exceções', larguras: [14, 34, 80, 38],
+      linhas: [cab(['Origem', 'Negócio / item', 'Descrição', 'Próxima ação'])]
+        .concat(exc.length ? exc.map(x => [x.origem, x.item, x.descricao, x.acao]) : [['—', 'Nenhuma exceção em aberto']]) };
+    baixar(montarXlsx([resumo, blotter, produto, contraparte, excecoes]), 'dtvm-relatorio-' + D0 + '.xlsx',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  });
+
+  // CSV no padrão do Excel em português: ";" separa colunas, "," decimal, BOM pra acentos
+  $('dtvm-exp-csv').addEventListener('click', () => {
+    const celula = c => {
+      const v = c && typeof c === 'object' ? ('v' in c ? c.v : c.t) : c;
+      const s = typeof v === 'number' ? String(v).replace('.', ',') : String(v);
+      return /[;"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    };
+    const texto = [CAB_BLOTTER].concat(linhasBlotter()).map(l => l.map(celula).join(';')).join('\r\n');
+    baixar('﻿' + texto, 'dtvm-blotter-' + D0 + '.csv', 'text/csv;charset=utf-8');
+  });
+
+  // ---------------------------------------------------------
+  // INICIALIZAÇÃO
+  // ---------------------------------------------------------
+  function atualizarTudo() {
+    renderConfirmacao();
+    renderLiquidacao();
+    renderFalha();
+    renderConciliacao();
+    renderAgenda();
+    renderRelatorio();
+    renderKPIs();
+  }
+
+  renderBlotter();
+  renderPares();
+  carregarNegocio(NEGOCIOS[0].id);
+  atualizarTudo();
 
 })();

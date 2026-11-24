@@ -6308,3 +6308,250 @@ body::before {
   }
   .bi-tab--tes { overflow-x: auto; }
 }
+
+/* ============================================================ */
+/* DTVM·OPS — mesa de crédito privado (intermediação)            */
+/* Reaproveita bi-mockup/excel-mockup/tool/dops-*; componentes   */
+/* novos usam prefixo dtvm-. As cores saem dos aliases (--fg,    */
+/* --line, --accent...), então a mesma tabela funciona no papel  */
+/* e dentro dos monitores de fósforo.                            */
+/* ============================================================ */
+
+/* ------------------- TABELAS ------------------- */
+.dtvm-scroll { overflow-x: auto; margin-bottom: 12px; }
+.dtvm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--fonte-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+.dtvm-table th {
+  text-align: left;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--fg-2);
+  border-bottom: 2px solid var(--fg);
+  padding: 8px 10px;
+  white-space: nowrap;
+  background: transparent;
+}
+.dtvm-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+  color: var(--fg);
+  vertical-align: middle;
+}
+.dtvm-table .num { text-align: right; }
+/* texto longo (contraparte, descrição) quebra linha; números nunca */
+.dtvm-table td.wrap { white-space: normal; min-width: 120px; line-height: 1.4; }
+/* cabeçalho pode ir pra duas linhas: economiza largura sem esconder coluna */
+.dtvm-table th { white-space: normal; vertical-align: bottom; line-height: 1.3; }
+.dtvm-table--blotter td, .dtvm-table--blotter th,
+.dtvm-table--conf td, .dtvm-table--conf th { padding-left: 7px; padding-right: 7px; }
+.dtvm-2l { display: block; font-size: 9.5px; color: var(--fg-3); margin-top: 2px; letter-spacing: 0.3px; }
+.dtvm-total td { font-weight: 700; border-top: 2px solid var(--fg); border-bottom: none; }
+.dtvm-muted { color: var(--fg-3); font-size: 10px; }
+
+/* pares casados: fio lateral alternado + o par acende no hover */
+.dtvm-par--a td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.dtvm-par--b td:first-child { box-shadow: inset 3px 0 0 var(--fg-3); }
+.dtvm-par--aceso td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.dtvm-lado { font-weight: 700; }
+.dtvm-lado--C { color: var(--green); }
+.dtvm-lado--V { color: var(--red); }
+
+/* divergências: vermelho-carimbo no papel, vermelho de erro na tela */
+.dtvm-cel--div {
+  color: var(--red) !important;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--red) 10%, transparent);
+}
+.dtvm-linha--falha td { background: color-mix(in srgb, var(--red) 7%, transparent); }
+
+/* ------------------- CARIMBOS DE STATUS ------------------- */
+.dtvm-stamp {
+  display: inline-block;
+  font-family: var(--fonte-mono);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border: 2px solid currentColor;
+  transform: rotate(-1.5deg);
+  white-space: nowrap;
+}
+.dtvm-stamp--ok   { color: var(--green); }
+.dtvm-stamp--div  { color: var(--red); }
+.dtvm-stamp--pend { color: #8a6d00; }
+.bi-mockup .dtvm-stamp--pend { color: var(--cor-fosforo); }
+.dtvm-resumo, .dtvm-camara-resumo { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 16px; }
+
+/* ------------------- FILTROS DO BLOTTER ------------------- */
+.dtvm-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.dtvm-chip {
+  font-family: var(--fonte-mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  background: transparent;
+  color: var(--fg-2);
+  border: 1px solid var(--line-2);
+  cursor: pointer;
+}
+.dtvm-chip:hover { border-color: var(--fg-2); color: var(--fg); }
+.dtvm-chip[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+#dtvm-blotter .bi-row { margin-top: 16px; }
+/* cards de monitor são itens de grid: sem min-width 0 eles crescem até a
+   largura da tabela mais larga e empurram a página pro lado no celular */
+#tab-dtvm .bi-row > .bi-card { min-width: 0; }
+
+/* ------------------- PENDÊNCIAS / EXCEÇÕES = FICHAS ------------------- */
+.dtvm-pend { margin-top: 20px; }
+.dtvm-item {
+  border: 1px solid var(--fg-2);
+  border-left: 4px solid var(--red);
+  background: var(--bg-2);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+.dtvm-item--ok { border-left-color: var(--green); }
+.dtvm-item__h { font-size: 13px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.dtvm-item__b { font-size: 14px; line-height: 1.55; color: var(--fg-2); margin: 6px 0 10px; }
+.dtvm-item--ok .dtvm-item__b { margin-bottom: 0; }
+.dtvm-acao {
+  font-family: var(--fonte-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 7px 12px;
+  border: 2px solid var(--fg);
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  text-align: left;
+}
+.dtvm-acao:hover:not(:disabled) { background: var(--fg); color: var(--bg); }
+.dtvm-acao:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.dtvm-sub {
+  font-family: var(--fonte-mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--fg-3);
+  margin: 18px 0 8px;
+}
+.dtvm-sub__meta { letter-spacing: 0.5px; text-transform: none; margin-left: 8px; opacity: 0.85; }
+.dtvm-nota { font-size: 12px; color: var(--fg-3); margin: 10px 0; line-height: 1.5; }
+
+/* ------------------- CALCULADORA DE PU ------------------- */
+.dtvm-field--wide { flex: 1 1 100%; }
+#tool-dtvm-pu select.tool__input { cursor: pointer; }
+/* os campos usam display:flex, que venceria o atributo hidden */
+#tool-dtvm-pu .tool__field[hidden] { display: none; }
+.dtvm-pu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 20px; align-items: start; }
+.dtvm-curva { width: 100%; height: auto; max-height: 240px; display: block; }
+.dtvm-details { margin-top: 18px; }
+.dtvm-details summary {
+  cursor: pointer;
+  font-family: var(--fonte-mono);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--fg-2);
+  padding: 8px 0;
+}
+.dtvm-details[open] summary { margin-bottom: 8px; }
+
+/* ------------------- TOOLTIP DO DVP ------------------- */
+.dtvm-tip { position: relative; display: inline-block; }
+.dtvm-tip__btn {
+  font: inherit;
+  font-family: var(--fonte-mono);
+  font-weight: 700;
+  color: var(--cor-caneta);
+  background: none;
+  border: 0;
+  border-bottom: 1px dashed var(--cor-caneta);
+  padding: 0;
+  cursor: help;
+}
+.dtvm-tip__box {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 10px);
+  width: 320px;
+  max-width: 80vw;
+  background: var(--cor-tinta);
+  color: var(--cor-papel);
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 12px 14px;
+  box-shadow: var(--pilha);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s;
+  z-index: 20;
+  pointer-events: none;
+}
+.dtvm-tip__box strong { color: var(--cor-fosforo); }
+.dtvm-tip:hover .dtvm-tip__box,
+.dtvm-tip:focus-within .dtvm-tip__box { opacity: 1; visibility: visible; }
+
+/* ------------------- TRATAMENTO DA FALHA ------------------- */
+.dtvm-passos { list-style: none; margin: 16px 0 0; padding: 0; }
+.dtvm-passo { display: flex; gap: 14px; padding: 12px 0; border-bottom: 1px dashed var(--line-2); }
+.dtvm-passo__n {
+  flex: 0 0 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--fonte-mono);
+  font-weight: 700;
+  border: 2px solid var(--fg);
+}
+.dtvm-passo--ok .dtvm-passo__n { background: var(--green); border-color: var(--green); color: var(--bg); }
+.dtvm-passo__t { font-weight: 600; font-size: 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dtvm-passo--ok .dtvm-passo__t { margin-bottom: 0; }
+
+/* o log do incidente é um terminal embutido no papel */
+.dtvm-log {
+  margin-top: 18px;
+  background: var(--cor-tela);
+  border: 3px solid var(--cor-tinta);
+  box-shadow: var(--pilha);
+  padding: 4px 16px 12px;
+  font-family: var(--fonte-mono);
+  font-size: 12px;
+  line-height: 1.55;
+  color: #e8e0ce;
+}
+.dtvm-log .dtvm-sub { color: var(--cor-fosforo); }
+.dtvm-log__l { padding: 6px 0; border-bottom: 1px solid #2e2921; }
+.dtvm-log__l:last-child { border-bottom: none; }
+.dtvm-log .dtvm-muted { color: #857a5f; font-size: 12px; }
+
+/* ------------------- RELATÓRIO ------------------- */
+.dtvm-export { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 16px; }
+.dtvm-export .dtvm-nota { margin: 0; }
+/* o botão secundário do projeto é largura total; aqui os dois ficam lado a lado */
+.dtvm-export .tool__btn { width: auto; margin-top: 0; }
+#dtvm-relatorio .bi-bar { grid-template-columns: 120px 1fr 48px; }
+
+/* ------------------- MOBILE ---------------------------------- */
+@media (max-width: 768px) {
+  .dtvm-pu-grid { grid-template-columns: 1fr; }
+  .dtvm-table { font-size: 10px; }
+  .dtvm-table th, .dtvm-table td { padding: 6px 8px; }
+  .dtvm-tip__box { width: 260px; left: -40px; }
+  #dtvm-relatorio .bi-bar { grid-template-columns: 96px 1fr 40px; }
+  #tab-dtvm .bi-row { grid-template-columns: 1fr; }
+  #tab-dtvm .bi-mockup { padding: 16px; }
+}
